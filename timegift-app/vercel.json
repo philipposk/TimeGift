@@ -1,0 +1,12 @@
+{
+  "crons": [
+    {
+      "path": "/api/decay",
+      "schedule": "0 0 * * *"
+    },
+    {
+      "path": "/api/random-exchange",
+      "schedule": "0 12 * * *"
+    }
+  ]
+}

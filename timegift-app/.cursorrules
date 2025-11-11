@@ -1,0 +1,62 @@
+# TimeGift Development Rules
+
+## Code Style
+- Use TypeScript for type safety
+- Prefer functional components and hooks
+- Use Tailwind CSS for styling
+- Follow Next.js 15 App Router conventions
+
+## State Management
+- Use React hooks for local state
+- Zustand for global state (if needed)
+- Supabase for backend state
+
+## Database
+- All queries through Supabase client
+- Use RLS policies for security
+- Server components for data fetching when possible
+
+## Security
+- Never expose service_role key in client code
+- Always validate user permissions
+- Use RLS policies for data access control
+
+## Performance
+- Use Server Components by default
+- Client Components only when needed (interactivity)
+- Optimize images with Next.js Image component
+- Lazy load heavy components
+
+## File Organization
+- `/app` - Pages and routes
+- `/components` - Reusable React components  
+- `/lib` - Core utilities and configurations
+- `/utils` - Helper functions
+- `/types` - TypeScript type definitions
+
+## Naming Conventions
+- Components: PascalCase (e.g., `GiftCard.tsx`)
+- Files: kebab-case (e.g., `gift-card.tsx`)
+- Functions: camelCase (e.g., `sendGift()`)
+- Constants: UPPER_SNAKE_CASE
+
+## Git Commits
+- Use conventional commits format
+- feat: new feature
+- fix: bug fix
+- docs: documentation
+- style: formatting
+- refactor: code restructuring
+- test: adding tests
+
+## API Routes
+- Use Next.js Route Handlers
+- Validate inputs
+- Return proper HTTP status codes
+- Handle errors gracefully
+
+## Testing
+- Test critical flows
+- Mock Supabase calls
+- Test dark/light mode compatibility
+- Test responsive design
