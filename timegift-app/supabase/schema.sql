@@ -12,6 +12,8 @@ CREATE TABLE profiles (
   privacy_level TEXT DEFAULT 'friends' CHECK (privacy_level IN ('closed', 'friends', 'public')),
   bio TEXT,
   is_admin BOOLEAN DEFAULT FALSE,
+  is_guest BOOLEAN DEFAULT FALSE,
+  opt_in_random_matching BOOLEAN DEFAULT FALSE, -- Opt-in for random gift matching
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -37,6 +39,8 @@ CREATE TABLE gifts (
   time_amount INTEGER NOT NULL, -- in minutes
   original_time_amount INTEGER NOT NULL, -- for decay calculation
   time_unit TEXT DEFAULT 'hours' CHECK (time_unit IN ('minutes', 'hours', 'days')),
+  purpose TEXT, -- What the time can be used for (e.g., "Anything", "Help with fence", etc.)
+  is_random_match BOOLEAN DEFAULT FALSE, -- If gift is from random matching
   status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'accepted', 'scheduled', 'completed', 'expired', 'cancelled')),
   expiry_date TIMESTAMP WITH TIME ZONE,
   decay_rate DECIMAL DEFAULT 0.05, -- 5% decay per week by default
@@ -112,12 +116,18 @@ CREATE TABLE app_settings (
 -- Insert default settings
 INSERT INTO app_settings (setting_key, setting_value, description, category) VALUES
   ('notification_frequency', '{"reminder_frequency_hours": 24, "max_reminders": 5}', 'How often to send reminder notifications', 'notifications'),
+  ('notifications_enabled_beta', 'true', 'All notifications enabled for beta', 'notifications'),
   ('time_decay_enabled', 'true', 'Enable time decay for unredeemed gifts', 'general'),
   ('default_decay_rate', '0.05', 'Default decay rate per week (5%)', 'general'),
   ('vonage_enabled', 'false', 'Enable Vonage SMS notifications', 'api'),
   ('vonage_config', '{}', 'Vonage API configuration', 'api'),
+  ('ai_provider', '"groq"', 'AI provider (groq, openai, etc)', 'ai'),
+  ('ai_api_key', '""', 'AI API key', 'ai'),
+  ('ai_model', '"llama-3.1-8b-instant"', 'AI model to use', 'ai'),
+  ('ai_enabled', 'false', 'Enable AI features', 'ai'),
   ('theme_config', '{"default_theme": "system", "allow_user_preference": true}', 'Theme configuration', 'theme'),
-  ('guest_access_enabled', 'true', 'Allow guest access to the app', 'general');
+  ('guest_access_enabled', 'true', 'Allow guest access to the app', 'general'),
+  ('random_matching_enabled', 'true', 'Enable random gift matching feature', 'general');
 
 -- Create indexes for better performance
 CREATE INDEX idx_gifts_sender ON gifts(sender_id);

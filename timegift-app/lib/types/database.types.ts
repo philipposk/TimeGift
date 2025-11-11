@@ -6,6 +6,8 @@ export type Profile = {
   privacy_level: 'closed' | 'friends' | 'public'
   bio: string | null
   is_admin: boolean
+  is_guest: boolean
+  opt_in_random_matching: boolean
   created_at: string
   updated_at: string
 }
@@ -28,6 +30,8 @@ export type Gift = {
   time_amount: number
   original_time_amount: number
   time_unit: 'minutes' | 'hours' | 'days'
+  purpose: string | null
+  is_random_match: boolean
   status: 'pending' | 'accepted' | 'scheduled' | 'completed' | 'expired' | 'cancelled'
   expiry_date: string | null
   decay_rate: number
