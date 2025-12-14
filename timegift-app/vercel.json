@@ -1,12 +1,10 @@
 {
-  "crons": [
-    {
-      "path": "/api/decay",
-      "schedule": "0 0 * * *"
-    },
-    {
-      "path": "/api/random-exchange",
-      "schedule": "0 12 * * *"
-    }
-  ]
+  "buildCommand": "npm run build",
+  "devCommand": "npm run dev",
+  "installCommand": "npm install",
+  "framework": "nextjs",
+  "regions": ["iad1"],
+  "env": {
+    "NEXT_PUBLIC_APP_URL": "https://timegift.6x7.gr"
+  }
 }

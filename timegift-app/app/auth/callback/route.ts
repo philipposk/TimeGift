@@ -1,20 +1,12 @@
 import { NextResponse } from 'next/server';
-import { createSupabaseServerClient } from '@/lib/supabase-server';
 
+// Firebase handles OAuth callbacks automatically via popup/redirect
+// This route is kept for compatibility but Firebase handles auth state client-side
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
-  const code = searchParams.get('code');
   const next = searchParams.get('next') ?? '/dashboard';
-
-  if (code) {
-    const supabase = await createSupabaseServerClient();
-    const { error } = await supabase.auth.exchangeCodeForSession(code);
-    
-    if (!error) {
-      return NextResponse.redirect(`${origin}${next}`);
-    }
-  }
-
-  // Return the user to an error page with instructions
-  return NextResponse.redirect(`${origin}/auth/signin?error=callback_failed`);
+  
+  // Firebase OAuth completes on the client side
+  // Just redirect to the intended destination
+  return NextResponse.redirect(`${origin}${next}`);
 }

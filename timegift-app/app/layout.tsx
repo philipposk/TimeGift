@@ -10,7 +10,7 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: "TimeGift - Gift Your Time with Love",
-  description: "The most precious gift: your time and presence. Create personalized time gifts for the people you care about.",
+  description: "Gift the moments that matter. Create, share, and track meaningful time gifts with the people you care about.",
   keywords: ["time gift", "personal gift", "scheduling", "quality time"],
 };
 
