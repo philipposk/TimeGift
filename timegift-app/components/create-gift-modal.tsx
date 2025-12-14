@@ -1,28 +1,46 @@
 'use client';
 
 import { useState } from 'react';
-import { X, Clock, Heart, Calendar, User, Mail, Phone } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { X, Clock, Heart, Mail, Phone } from 'lucide-react';
+import { getCurrentUser } from '@/utils/auth';
+
+type RecipientType = 'email' | 'phone';
+type TimeUnit = 'minutes' | 'hours' | 'days';
+type PurposeType = 'anything' | 'specific';
+type AvailabilityType = 'open' | 'specific';
+
+interface GiftFormState {
+  recipientType: RecipientType;
+  recipientEmail: string;
+  recipientPhone: string;
+  message: string;
+  timeAmount: number;
+  timeUnit: TimeUnit;
+  purposeType: PurposeType;
+  purposeDetails: string;
+  availabilityType: AvailabilityType;
+  availabilityData: Record<string, unknown> | null;
+  expiryDate: string;
+}
 
 interface CreateGiftModalProps {
   onClose: () => void;
-  userId: string;
 }
 
-export default function CreateGiftModal({ onClose, userId }: CreateGiftModalProps) {
-  const [step, setStep] = useState(1);
-  const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState({
-    recipientType: 'user', // 'user' | 'email' | 'phone'
+export default function CreateGiftModal({ onClose }: CreateGiftModalProps) {
+  const [step, setStep] = useState<number>(1);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [formData, setFormData] = useState<GiftFormState>({
+    recipientType: 'email',
     recipientEmail: '',
     recipientPhone: '',
     message: '',
     timeAmount: 2,
-    timeUnit: 'hours' as 'minutes' | 'hours' | 'days',
-    purposeType: 'anything' as 'anything' | 'specific',
+    timeUnit: 'hours',
+    purposeType: 'anything',
     purposeDetails: '',
-    availabilityType: 'open', // 'open' | 'specific'
-    availabilityData: null as any,
+    availabilityType: 'open',
+    availabilityData: null,
     expiryDate: '',
   });
 
@@ -36,31 +54,46 @@ export default function CreateGiftModal({ onClose, userId }: CreateGiftModalProp
   const handleSubmit = async () => {
     setLoading(true);
     try {
-      const gift = {
-        sender_id: userId,
-        recipient_id: null,
-        recipient_email: formData.recipientType === 'email' ? formData.recipientEmail : null,
-        recipient_phone: formData.recipientType === 'phone' ? formData.recipientPhone : null,
-        message: formData.message,
-        time_amount: formData.timeAmount * (formData.timeUnit === 'hours' ? 60 : formData.timeUnit === 'days' ? 1440 : 1),
-        original_time_amount: formData.timeAmount * (formData.timeUnit === 'hours' ? 60 : formData.timeUnit === 'days' ? 1440 : 1),
-        time_unit: formData.timeUnit,
-        purpose_type: formData.purposeType,
-        purpose_details: formData.purposeType === 'specific' ? formData.purposeDetails : null,
-        availability_data: formData.availabilityType === 'open' ? null : formData.availabilityData,
-        expiry_date: formData.expiryDate || null,
-        status: 'pending',
-        is_random_exchange: false,
-      };
+      const currentUser = await getCurrentUser();
+      if (!currentUser) {
+        alert('Please sign in to create a gift');
+        return;
+      }
 
-      const { error } = await supabase.from('gifts').insert([gift]);
+      const response = await fetch('/api/gifts/create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: currentUser.id, // Send userId for now
+          recipientType: formData.recipientType,
+          recipientEmail:
+            formData.recipientType === 'email' ? formData.recipientEmail : undefined,
+          recipientPhone:
+            formData.recipientType === 'phone' ? formData.recipientPhone : undefined,
+          message: formData.message,
+          timeAmount: formData.timeAmount,
+          timeUnit: formData.timeUnit,
+          purposeType: formData.purposeType,
+          purposeDetails:
+            formData.purposeType === 'specific' ? formData.purposeDetails : undefined,
+          availabilityData:
+            formData.availabilityType === 'open' ? null : formData.availabilityData,
+          expiryDate: formData.expiryDate || null,
+        }),
+      });
 
-      if (error) throw error;
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result?.error || 'Failed to create gift');
+      }
 
-      // Refresh the page
       window.location.reload();
-    } catch (error: any) {
-      alert('Error creating gift: ' + error.message);
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unexpected error creating gift';
+      alert('Error creating gift: ' + errorMessage);
     } finally {
       setLoading(false);
     }

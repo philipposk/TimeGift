@@ -119,7 +119,7 @@ These are optional and can be added later in the admin panel:
 ### Vonage SMS
 1. Sign up at [vonage.com](https://dashboard.nexmo.com)
 2. Get API Key and Secret
-3. Add in `/admin` → API Keys tab
+3. Add API key, secret, and the sender ID/phone number you want to appear in `/admin` → API Keys tab
 
 ### Groq AI (for image enhancement)
 1. Sign up at [groq.com](https://console.groq.com)
@@ -128,8 +128,8 @@ These are optional and can be added later in the admin panel:
 
 ### WhatsApp Business
 1. Set up via Meta Business
-2. Get API credentials
-3. Add in `/admin` → API Keys tab
+2. Get API credentials (key + secret) and the approved WhatsApp-enabled sender number
+3. Add credentials in `/admin` → API Keys tab to enable WhatsApp notifications
 
 ## 🚨 Common Issues
 

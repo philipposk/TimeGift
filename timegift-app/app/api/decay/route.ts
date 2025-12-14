@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase';
+import { adminDb } from '@/lib/firebase-admin';
+import { Timestamp } from 'firebase-admin/firestore';
 
 // This endpoint should be called by a cron job (e.g., Vercel Cron, GitHub Actions)
 // to process time decay for unredeemed gifts
@@ -12,18 +13,15 @@ export async function POST(request: Request) {
     }
 
     // Get decay settings
-    const { data: settings } = await supabaseAdmin
-      .from('admin_settings')
-      .select('setting_value')
-      .eq('setting_key', 'time_decay')
-      .single();
-
-    const decayConfig = settings?.setting_value || {
-      enabled: true,
-      rate_percent: 5,
-      interval_days: 7,
-      grace_period_days: 3
-    };
+    const settingsDoc = await adminDb.collection('admin_settings').doc('time_decay').get();
+    const decayConfig = settingsDoc.exists && settingsDoc.data()?.setting_value
+      ? settingsDoc.data()!.setting_value
+      : {
+          enabled: true,
+          rate_percent: 5,
+          interval_days: 7,
+          grace_period_days: 3
+        };
 
     if (!decayConfig.enabled) {
       return NextResponse.json({ message: 'Time decay is disabled' });
@@ -32,21 +30,27 @@ export async function POST(request: Request) {
     // Get all pending gifts that are past the grace period
     const gracePeriodDate = new Date();
     gracePeriodDate.setDate(gracePeriodDate.getDate() - decayConfig.grace_period_days);
+    const gracePeriodTimestamp = Timestamp.fromDate(gracePeriodDate);
 
-    const { data: gifts, error } = await supabaseAdmin
-      .from('gifts')
-      .select('*')
-      .eq('status', 'pending')
-      .lt('created_at', gracePeriodDate.toISOString());
+    const giftsSnapshot = await adminDb
+      .collection('gifts')
+      .where('status', '==', 'pending')
+      .get();
 
-    if (error) throw error;
+    const gifts = giftsSnapshot.docs
+      .map(doc => ({ id: doc.id, ...doc.data() }))
+      .filter(gift => {
+        const createdAt = gift.created_at?.toDate ? gift.created_at.toDate() : new Date(gift.created_at);
+        return createdAt < gracePeriodDate;
+      });
 
     let processedCount = 0;
     let expiredCount = 0;
 
-    for (const gift of gifts || []) {
+    for (const gift of gifts) {
+      const createdAt = gift.created_at?.toDate ? gift.created_at.toDate() : new Date(gift.created_at);
       const daysSinceCreation = Math.floor(
-        (Date.now() - new Date(gift.created_at).getTime()) / (1000 * 60 * 60 * 24)
+        (Date.now() - createdAt.getTime()) / (1000 * 60 * 60 * 24)
       );
       
       const daysSinceGracePeriod = daysSinceCreation - decayConfig.grace_period_days;
@@ -59,18 +63,19 @@ export async function POST(request: Request) {
 
         if (newTimeAmount === 0) {
           // Gift has completely decayed - mark as expired
-          await supabaseAdmin
-            .from('gifts')
-            .update({ status: 'expired', time_amount: 0 })
-            .eq('id', gift.id);
+          await adminDb.collection('gifts').doc(gift.id).update({
+            status: 'expired',
+            time_amount: 0,
+            updated_at: Timestamp.now(),
+          });
           
           expiredCount++;
         } else {
           // Update with decayed time
-          await supabaseAdmin
-            .from('gifts')
-            .update({ time_amount: newTimeAmount })
-            .eq('id', gift.id);
+          await adminDb.collection('gifts').doc(gift.id).update({
+            time_amount: newTimeAmount,
+            updated_at: Timestamp.now(),
+          });
           
           processedCount++;
         }
@@ -81,7 +86,7 @@ export async function POST(request: Request) {
       success: true,
       processed: processedCount,
       expired: expiredCount,
-      total: gifts?.length || 0
+      total: gifts.length
     });
   } catch (error: any) {
     console.error('Time decay error:', error);

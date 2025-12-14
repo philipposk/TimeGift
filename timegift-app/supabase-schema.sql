@@ -107,9 +107,9 @@ CREATE INDEX idx_notifications_unread ON notifications(user_id, is_read);
 INSERT INTO admin_settings (setting_key, setting_value, description) VALUES
   ('theme', '{"default": "light", "allow_user_override": true}', 'Theme configuration'),
   ('time_decay', '{"enabled": true, "rate_percent": 5, "interval_days": 7, "grace_period_days": 3}', 'Time decay configuration'),
-  ('notifications', '{"frequency": "immediate", "channels": ["in_app", "email"], "reminder_messages": ["You have been summoned!", "Time to be redeemed!", "Someone awaits your gift of time!"]}', 'Notification settings'),
-  ('vonage_api', '{"api_key": "", "api_secret": "", "enabled": false}', 'Vonage SMS API configuration'),
-  ('whatsapp_api', '{"api_key": "", "enabled": false}', 'WhatsApp API configuration'),
+  ('notifications', '{"frequency": "immediate", "channels": ["in_app", "sms"], "reminder_messages": ["You have been summoned!", "Time to be redeemed!", "Someone awaits your gift of time!"]}', 'Notification settings'),
+  ('vonage_api', '{"api_key": "", "api_secret": "", "from_number": "TimeGift", "enabled": false}', 'Vonage SMS API configuration'),
+  ('whatsapp_api', '{"api_key": "", "api_secret": "", "from_number": "", "enabled": false}', 'WhatsApp API configuration'),
   ('groq_api', '{"api_key": "", "model": "llama-3.3-70b-versatile", "enabled": false}', 'Groq AI API configuration'),
   ('random_exchange', '{"enabled": true, "match_similar_time": true}', 'Random gift exchange settings')
 ON CONFLICT (setting_key) DO NOTHING;

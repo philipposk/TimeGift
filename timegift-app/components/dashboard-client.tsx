@@ -4,16 +4,17 @@ import { useState } from 'react';
 import { Gift, Clock, TrendingUp, Calendar, Plus, User, Heart, Bell } from 'lucide-react';
 import Link from 'next/link';
 import CreateGiftModal from './create-gift-modal';
+import AcceptGiftModal from './accept-gift-modal';
 
 interface DashboardClientProps {
-  user: any;
   profile: any;
   sentGifts: any[];
   receivedGifts: any[];
 }
 
-export default function DashboardClient({ user, profile, sentGifts, receivedGifts }: DashboardClientProps) {
+export default function DashboardClient({ profile, sentGifts, receivedGifts }: DashboardClientProps) {
   const [showCreateGift, setShowCreateGift] = useState(false);
+  const [giftToAccept, setGiftToAccept] = useState<string | null>(null);
 
   // Calculate statistics
   const totalHoursGifted = profile?.total_hours_gifted || 0;
@@ -153,7 +154,10 @@ export default function DashboardClient({ user, profile, sentGifts, receivedGift
                       <span>{gift.time_amount} {gift.time_unit}</span>
                     </div>
                     {gift.status === 'pending' && (
-                      <button className="text-sm font-semibold text-pink-600 dark:text-pink-400 hover:underline">
+                      <button
+                        onClick={() => setGiftToAccept(gift.id)}
+                        className="text-sm font-semibold text-pink-600 dark:text-pink-400 hover:underline"
+                      >
                         Accept →
                       </button>
                     )}
@@ -220,7 +224,17 @@ export default function DashboardClient({ user, profile, sentGifts, receivedGift
       {showCreateGift && (
         <CreateGiftModal
           onClose={() => setShowCreateGift(false)}
-          userId={user.id}
+        />
+      )}
+
+      {giftToAccept && (
+        <AcceptGiftModal
+          giftId={giftToAccept}
+          onClose={() => setGiftToAccept(null)}
+          onAccepted={() => {
+            setGiftToAccept(null);
+            window.location.reload();
+          }}
         />
       )}
     </div>

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Settings, Clock, Bell, Palette, Zap, Database, Key } from 'lucide-react';
+import { Settings, Clock, Bell, Palette, Zap, Key } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
 interface AdminPanelClientProps {
@@ -259,6 +259,19 @@ export default function AdminPanelClient({ settings: initialSettings }: AdminPan
                 <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
                   <h4 className="font-semibold text-gray-900 dark:text-white mb-3">Vonage SMS API</h4>
                   <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+                        <input
+                          type="checkbox"
+                          checked={settings.vonage_api?.enabled ?? false}
+                          onChange={(e) => {
+                            const newVonage = { ...settings.vonage_api, enabled: e.target.checked };
+                            setSettings({ ...settings, vonage_api: newVonage });
+                          }}
+                        />
+                        Enable Vonage SMS
+                      </label>
+                    </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                         API Key
@@ -286,6 +299,21 @@ export default function AdminPanelClient({ settings: initialSettings }: AdminPan
                           setSettings({ ...settings, vonage_api: newVonage });
                         }}
                         placeholder="Enter Vonage API secret"
+                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        From Number / Sender ID
+                      </label>
+                      <input
+                        type="text"
+                        value={settings.vonage_api?.from_number || ''}
+                        onChange={(e) => {
+                          const newVonage = { ...settings.vonage_api, from_number: e.target.value };
+                          setSettings({ ...settings, vonage_api: newVonage });
+                        }}
+                        placeholder="e.g., TimeGift or +1234567890"
                         className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                       />
                     </div>
@@ -346,6 +374,19 @@ export default function AdminPanelClient({ settings: initialSettings }: AdminPan
                 <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
                   <h4 className="font-semibold text-gray-900 dark:text-white mb-3">WhatsApp Business API</h4>
                   <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+                        <input
+                          type="checkbox"
+                          checked={settings.whatsapp_api?.enabled ?? false}
+                          onChange={(e) => {
+                            const newWhatsApp = { ...settings.whatsapp_api, enabled: e.target.checked };
+                            setSettings({ ...settings, whatsapp_api: newWhatsApp });
+                          }}
+                        />
+                        Enable WhatsApp alerts
+                      </label>
+                    </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                         API Key
@@ -358,6 +399,36 @@ export default function AdminPanelClient({ settings: initialSettings }: AdminPan
                           setSettings({ ...settings, whatsapp_api: newWhatsApp });
                         }}
                         placeholder="Enter WhatsApp API key"
+                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        API Secret
+                      </label>
+                      <input
+                        type="password"
+                        value={settings.whatsapp_api?.api_secret || ''}
+                        onChange={(e) => {
+                          const newWhatsApp = { ...settings.whatsapp_api, api_secret: e.target.value };
+                          setSettings({ ...settings, whatsapp_api: newWhatsApp });
+                        }}
+                        placeholder="Enter WhatsApp API secret"
+                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        From Number
+                      </label>
+                      <input
+                        type="text"
+                        value={settings.whatsapp_api?.from_number || ''}
+                        onChange={(e) => {
+                          const newWhatsApp = { ...settings.whatsapp_api, from_number: e.target.value };
+                          setSettings({ ...settings, whatsapp_api: newWhatsApp });
+                        }}
+                        placeholder="e.g., 14157386102"
                         className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                       />
                     </div>
