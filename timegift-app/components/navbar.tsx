@@ -119,7 +119,6 @@ export default function Navbar({ user }: NavbarProps) {
         <div className="md:hidden border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
           <div className="px-4 py-3 space-y-2">
             {navItems.map((item) => {
-              if (item.auth && !user) return null;
               const Icon = item.icon;
               const isActive = pathname === item.href;
               
