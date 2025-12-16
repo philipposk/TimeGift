@@ -1,8 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import { X, Clock, Heart, Mail, Phone } from 'lucide-react';
+import { X, Clock, Heart, Mail, Phone, Sparkles } from 'lucide-react';
 import { getCurrentUser } from '@/utils/auth';
+import GiftTemplatesModal from './gift-templates-modal';
+import { type GiftTemplate } from '@/lib/gift-templates';
 
 type RecipientType = 'email' | 'phone';
 type TimeUnit = 'minutes' | 'hours' | 'days';
@@ -30,6 +32,7 @@ interface CreateGiftModalProps {
 export default function CreateGiftModal({ onClose }: CreateGiftModalProps) {
   const [step, setStep] = useState<number>(1);
   const [loading, setLoading] = useState<boolean>(false);
+  const [showTemplates, setShowTemplates] = useState<boolean>(false);
   const [formData, setFormData] = useState<GiftFormState>({
     recipientType: 'email',
     recipientEmail: '',
@@ -49,6 +52,17 @@ export default function CreateGiftModal({ onClose }: CreateGiftModalProps) {
       ...formData,
       [e.target.name]: e.target.value,
     });
+  };
+
+  const handleTemplateSelect = (template: GiftTemplate, message: string) => {
+    setFormData({
+      ...formData,
+      timeAmount: template.defaultTimeAmount,
+      timeUnit: template.defaultTimeUnit,
+      message: message,
+    });
+    setShowTemplates(false);
+    setStep(2); // Move to message step
   };
 
   const handleSubmit = async () => {
@@ -100,8 +114,17 @@ export default function CreateGiftModal({ onClose }: CreateGiftModalProps) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+    <>
+      {showTemplates && (
+        <GiftTemplatesModal
+          onSelectTemplate={handleTemplateSelect}
+          onClose={() => setShowTemplates(false)}
+          recipientName={formData.recipientEmail || formData.recipientPhone || ''}
+          relationship="friend"
+        />
+      )}
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex items-center justify-between">
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Create Time Gift</h2>
@@ -237,9 +260,19 @@ export default function CreateGiftModal({ onClose }: CreateGiftModalProps) {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Your heartfelt message
-                </label>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Your heartfelt message
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setShowTemplates(true)}
+                    className="flex items-center space-x-1 px-3 py-1 text-sm text-pink-600 dark:text-pink-400 hover:bg-pink-50 dark:hover:bg-pink-900/20 rounded-lg transition-colors"
+                  >
+                    <Sparkles className="w-4 h-4" />
+                    <span>Use Template</span>
+                  </button>
+                </div>
                 <textarea
                   name="message"
                   value={formData.message}
@@ -363,6 +396,7 @@ export default function CreateGiftModal({ onClose }: CreateGiftModalProps) {
           )}
         </div>
       </div>
-    </div>
+      </div>
+    </>
   );
 }
