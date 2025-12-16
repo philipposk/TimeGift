@@ -42,6 +42,10 @@ export default function AdminPage() {
         }
 
         // Get admin settings
+        if (!db) {
+          setSettings([]);
+          return;
+        }
         const settingsQuery = query(collection(db, 'admin_settings'), orderBy('setting_key'));
         const settingsSnapshot = await getDocs(settingsQuery);
         const settingsData = settingsSnapshot.docs.map(doc => ({

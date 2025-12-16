@@ -37,6 +37,14 @@ export default function DashboardPage() {
 
         // Get user profile
         try {
+          if (!db) {
+            // Firebase not configured
+            setProfile(null);
+            setSentGifts([]);
+            setReceivedGifts([]);
+            return;
+          }
+
           const profileDoc = await getDoc(doc(db, 'users', currentUser.id));
           const profileData = profileDoc.exists() ? { id: profileDoc.id, ...profileDoc.data() } : null;
           setProfile(profileData);
@@ -66,6 +74,9 @@ export default function DashboardPage() {
         } catch (dbError) {
           // If Firebase not configured, just show empty state
           console.log('Database not configured, showing guest mode');
+          setProfile(null);
+          setSentGifts([]);
+          setReceivedGifts([]);
         }
       } catch (error) {
         console.error('Error loading dashboard:', error);

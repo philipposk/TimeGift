@@ -32,6 +32,12 @@ export default function FriendsPage() {
         setUser(currentUser);
 
         // Get user profile
+        if (!db) {
+          setProfile(null);
+          setFriendships([]);
+          return;
+        }
+
         const profileDoc = await getDoc(doc(db, 'users', currentUser.id));
         const profileData = profileDoc.exists() ? { id: profileDoc.id, ...profileDoc.data() } : null;
         setProfile(profileData);

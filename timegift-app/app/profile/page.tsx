@@ -31,11 +31,16 @@ export default function ProfilePage() {
 
         // Get user profile
         try {
+          if (!db) {
+            setProfile(null);
+            return;
+          }
           const profileDoc = await getDoc(doc(db, 'users', currentUser.id));
           const profileData = profileDoc.exists() ? { id: profileDoc.id, ...profileDoc.data() } : null;
           setProfile(profileData);
         } catch (dbError) {
           console.log('Database not configured, showing guest mode');
+          setProfile(null);
         }
       } catch (error) {
         console.error('Error loading profile:', error);

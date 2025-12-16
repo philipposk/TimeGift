@@ -11,6 +11,11 @@ import {
 import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 
+// Check if Firebase is available
+const isFirebaseAvailable = () => {
+  return auth !== null && db !== null;
+};
+
 export interface AuthUser {
   id: string;
   email?: string;
@@ -22,8 +27,11 @@ export interface AuthUser {
 
 // Convert Firebase user to our AuthUser format
 async function getUserProfile(userId: string): Promise<AuthUser | null> {
+  if (!isFirebaseAvailable()) {
+    return null;
+  }
   try {
-    const userDoc = await getDoc(doc(db, 'users', userId));
+    const userDoc = await getDoc(doc(db!, 'users', userId));
     if (!userDoc.exists()) return null;
 
     const data = userDoc.data();
@@ -42,16 +50,22 @@ async function getUserProfile(userId: string): Promise<AuthUser | null> {
 }
 
 export async function signIn(email: string, password: string) {
-  const userCredential = await signInWithEmailAndPassword(auth, email, password);
+  if (!isFirebaseAvailable()) {
+    throw new Error('Firebase is not configured. Please set up Firebase to use authentication.');
+  }
+  const userCredential = await signInWithEmailAndPassword(auth!, email, password);
   return { user: userCredential.user };
 }
 
 export async function signUp(email: string, password: string, username: string) {
-  const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+  if (!isFirebaseAvailable()) {
+    throw new Error('Firebase is not configured. Please set up Firebase to create an account.');
+  }
+  const userCredential = await createUserWithEmailAndPassword(auth!, email, password);
   const user = userCredential.user;
 
   // Create user profile in Firestore
-  await setDoc(doc(db, 'users', user.uid), {
+  await setDoc(doc(db!, 'users', user.uid), {
     id: user.uid,
     email,
     username,
@@ -70,17 +84,23 @@ export async function signUp(email: string, password: string, username: string) 
 }
 
 export async function signOut() {
-  await firebaseSignOut(auth);
+  if (!isFirebaseAvailable()) {
+    return;
+  }
+  await firebaseSignOut(auth!);
 }
 
 export async function signInWithGoogle() {
+  if (!isFirebaseAvailable()) {
+    throw new Error('Firebase is not configured. Please set up Firebase to use Google sign-in.');
+  }
   const provider = new GoogleAuthProvider();
-  const userCredential = await signInWithPopup(auth, provider);
+  const userCredential = await signInWithPopup(auth!, provider);
   
   // Create profile if doesn't exist
-  const userDoc = await getDoc(doc(db, 'users', userCredential.user.uid));
+  const userDoc = await getDoc(doc(db!, 'users', userCredential.user.uid));
   if (!userDoc.exists()) {
-    await setDoc(doc(db, 'users', userCredential.user.uid), {
+    await setDoc(doc(db!, 'users', userCredential.user.uid), {
       id: userCredential.user.uid,
       email: userCredential.user.email,
       username: userCredential.user.email?.split('@')[0] || 'user',
@@ -101,13 +121,16 @@ export async function signInWithGoogle() {
 }
 
 export async function signInWithFacebook() {
+  if (!isFirebaseAvailable()) {
+    throw new Error('Firebase is not configured. Please set up Firebase to use Facebook sign-in.');
+  }
   const provider = new FacebookAuthProvider();
-  const userCredential = await signInWithPopup(auth, provider);
+  const userCredential = await signInWithPopup(auth!, provider);
   
   // Create profile if doesn't exist
-  const userDoc = await getDoc(doc(db, 'users', userCredential.user.uid));
+  const userDoc = await getDoc(doc(db!, 'users', userCredential.user.uid));
   if (!userDoc.exists()) {
-    await setDoc(doc(db, 'users', userCredential.user.uid), {
+    await setDoc(doc(db!, 'users', userCredential.user.uid), {
       id: userCredential.user.uid,
       email: userCredential.user.email,
       username: userCredential.user.email?.split('@')[0] || 'user',
@@ -128,8 +151,11 @@ export async function signInWithFacebook() {
 }
 
 export async function getCurrentUser(): Promise<AuthUser | null> {
+  if (!isFirebaseAvailable()) {
+    return null;
+  }
   return new Promise((resolve) => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+    const unsubscribe = onAuthStateChanged(auth!, async (firebaseUser) => {
       unsubscribe();
       if (!firebaseUser) {
         resolve(null);
@@ -142,8 +168,11 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
 }
 
 export async function getSession() {
+  if (!isFirebaseAvailable()) {
+    return null;
+  }
   return new Promise((resolve) => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = onAuthStateChanged(auth!, (user) => {
       unsubscribe();
       resolve(user ? { user } : null);
     });
