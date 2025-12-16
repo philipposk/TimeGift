@@ -39,6 +39,12 @@ export default function HomePage() {
                 Start Gifting Time
               </Link>
               <Link
+                href="/calculator"
+                className="px-8 py-4 text-lg font-semibold text-pink-600 dark:text-pink-400 bg-white dark:bg-gray-800 rounded-full hover:bg-pink-50 dark:hover:bg-gray-700 transition-all shadow-md border-2 border-pink-200 dark:border-pink-800"
+              >
+                Calculate Time Left
+              </Link>
+              <Link
                 href="/about"
                 className="px-8 py-4 text-lg font-semibold text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 rounded-full hover:bg-gray-50 dark:hover:bg-gray-700 transition-all shadow-md"
               >
