@@ -1,7 +1,7 @@
 // AI utilities for OpenAI and Groq
 
 import OpenAI from 'openai';
-// @ts-ignore - groq-sdk types may not be available
+// @ts-expect-error - groq-sdk types may not be available
 import Groq from 'groq-sdk';
 
 // Initialize OpenAI

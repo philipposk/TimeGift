@@ -6,8 +6,8 @@ import { getAuth, Auth } from 'firebase-admin/auth';
 import { getFirestore, Firestore } from 'firebase-admin/firestore';
 
 let app: App;
-let adminAuth: Auth;
-let adminDb: Firestore;
+const adminAuth: Auth = getAuth(app);
+const adminDb: Firestore = getFirestore(app);
 
 // Initialize Firebase Admin
 if (getApps().length === 0) {
@@ -28,12 +28,9 @@ if (getApps().length === 0) {
       projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
     });
   }
-} else {
-  app = getApps()[0];
-}
-
-adminAuth = getAuth(app);
-adminDb = getFirestore(app);
+      } else {
+        app = getApps()[0];
+      }
 
 export { adminAuth, adminDb };
 
