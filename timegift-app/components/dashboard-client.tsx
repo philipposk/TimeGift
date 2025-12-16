@@ -335,6 +335,17 @@ export default function DashboardClient({ profile, sentGifts, receivedGifts, isG
           }}
         />
       )}
+      {giftToAddMemory && (
+        <AddMemoryModal
+          giftId={giftToAddMemory.id}
+          giftMessage={giftToAddMemory.message}
+          onClose={() => setGiftToAddMemory(null)}
+          onSuccess={() => {
+            setGiftToAddMemory(null);
+            window.location.reload();
+          }}
+        />
+      )}
     </div>
   );
 }
