@@ -32,6 +32,7 @@ export default function Navbar({ user }: NavbarProps) {
   const { theme, setTheme, actualTheme } = useTheme();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+  const [openMobileCategories, setOpenMobileCategories] = useState<Set<string>>(new Set());
   const dropdownRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
 
   const toggleTheme = () => {
@@ -235,21 +236,31 @@ export default function Navbar({ user }: NavbarProps) {
             {/* Categories with sections */}
             {navCategories.map((category) => {
               const CategoryIcon = category.icon;
-              const [categoryOpen, setCategoryOpen] = useState(false);
+              const isCategoryOpen = openMobileCategories.has(category.label);
+              
+              const toggleCategory = () => {
+                const newSet = new Set(openMobileCategories);
+                if (isCategoryOpen) {
+                  newSet.delete(category.label);
+                } else {
+                  newSet.add(category.label);
+                }
+                setOpenMobileCategories(newSet);
+              };
               
               return (
                 <div key={category.label}>
                   <button
-                    onClick={() => setCategoryOpen(!categoryOpen)}
+                    onClick={toggleCategory}
                     className="flex items-center justify-between w-full px-3 py-2 rounded-md text-sm font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
                   >
                     <div className="flex items-center space-x-2">
                       <CategoryIcon className="w-4 h-4" />
                       <span>{category.label}</span>
                     </div>
-                    <ChevronDown className={`w-4 h-4 transition-transform ${categoryOpen ? 'rotate-180' : ''}`} />
+                    <ChevronDown className={`w-4 h-4 transition-transform ${isCategoryOpen ? 'rotate-180' : ''}`} />
                   </button>
-                  {categoryOpen && (
+                  {isCategoryOpen && (
                     <div className="ml-4 mt-1 space-y-1">
                       {category.items.map((item) => {
                         if (item.auth && !user) return null;
@@ -262,7 +273,7 @@ export default function Navbar({ user }: NavbarProps) {
                             href={item.href}
                             onClick={() => {
                               setMobileMenuOpen(false);
-                              setCategoryOpen(false);
+                              setOpenMobileCategories(new Set());
                             }}
                             className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm transition-colors ${
                               isActive
