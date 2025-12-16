@@ -10,9 +10,10 @@ interface DashboardClientProps {
   profile: any;
   sentGifts: any[];
   receivedGifts: any[];
+  isGuest?: boolean;
 }
 
-export default function DashboardClient({ profile, sentGifts, receivedGifts }: DashboardClientProps) {
+export default function DashboardClient({ profile, sentGifts, receivedGifts, isGuest = false }: DashboardClientProps) {
   const [showCreateGift, setShowCreateGift] = useState(false);
   const [giftToAccept, setGiftToAccept] = useState<string | null>(null);
 
@@ -21,6 +22,77 @@ export default function DashboardClient({ profile, sentGifts, receivedGifts }: D
   const totalHoursReceived = profile?.total_hours_received || 0;
   const pendingGifts = receivedGifts.filter(g => g.status === 'pending').length;
   const completedGifts = sentGifts.filter(g => g.status === 'completed').length + receivedGifts.filter(g => g.status === 'completed').length;
+
+  // Guest mode UI
+  if (isGuest) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-12 text-center">
+          <Gift className="w-20 h-20 text-pink-500 mx-auto mb-6" />
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
+            Welcome to TimeGift! 🎁
+          </h1>
+          <p className="text-xl text-gray-600 dark:text-gray-400 mb-8 max-w-2xl mx-auto">
+            You're viewing in guest mode. Sign in to create time gifts, manage friends, and track your time gifting journey!
+          </p>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Link
+              href="/auth/signup"
+              className="px-8 py-4 text-lg font-semibold text-white bg-gradient-to-r from-pink-500 to-purple-600 rounded-full hover:from-pink-600 hover:to-purple-700 transform hover:scale-105 transition-all shadow-lg"
+            >
+              Get Started for Free
+            </Link>
+            <Link
+              href="/auth/signin"
+              className="px-8 py-4 text-lg font-semibold text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 rounded-full hover:bg-gray-50 dark:hover:bg-gray-600 transition-all shadow-md"
+            >
+              Sign In
+            </Link>
+          </div>
+        </div>
+
+        {/* Demo Dashboard Preview */}
+        <div className="mt-12 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border-l-4 border-pink-500 opacity-60">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Hours Gifted</p>
+                <p className="text-3xl font-bold text-gray-900 dark:text-white">0</p>
+              </div>
+              <Gift className="w-12 h-12 text-pink-500 opacity-20" />
+            </div>
+          </div>
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border-l-4 border-purple-500 opacity-60">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Hours Received</p>
+                <p className="text-3xl font-bold text-gray-900 dark:text-white">0</p>
+              </div>
+              <Heart className="w-12 h-12 text-purple-500 opacity-20" />
+            </div>
+          </div>
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border-l-4 border-blue-500 opacity-60">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Pending Gifts</p>
+                <p className="text-3xl font-bold text-gray-900 dark:text-white">0</p>
+              </div>
+              <Bell className="w-12 h-12 text-blue-500 opacity-20" />
+            </div>
+          </div>
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border-l-4 border-green-500 opacity-60">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Completed</p>
+                <p className="text-3xl font-bold text-gray-900 dark:text-white">0</p>
+              </div>
+              <TrendingUp className="w-12 h-12 text-green-500 opacity-20" />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -80,7 +152,13 @@ export default function DashboardClient({ profile, sentGifts, receivedGifts }: D
       {/* Quick Actions */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
         <button
-          onClick={() => setShowCreateGift(true)}
+          onClick={() => {
+            if (isGuest) {
+              window.location.href = '/auth/signup';
+            } else {
+              setShowCreateGift(true);
+            }
+          }}
           className="bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white rounded-2xl p-8 shadow-xl transform hover:scale-[1.02] transition-all"
         >
           <div className="flex items-center justify-between">

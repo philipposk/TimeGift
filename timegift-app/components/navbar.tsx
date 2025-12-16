@@ -24,9 +24,9 @@ export default function Navbar({ user }: NavbarProps) {
   };
 
   const navItems = [
-    { href: '/dashboard', label: 'Dashboard', icon: Gift, auth: true },
-    { href: '/profile', label: 'Profile', icon: User, auth: true },
-    { href: '/friends', label: 'Friends', icon: Users, auth: true },
+    { href: '/dashboard', label: 'Dashboard', icon: Gift, auth: false }, // Allow guests
+    { href: '/profile', label: 'Profile', icon: User, auth: false }, // Allow guests
+    { href: '/friends', label: 'Friends', icon: Users, auth: false }, // Allow guests
     { href: '/about', label: 'About', icon: null, auth: false },
   ];
 

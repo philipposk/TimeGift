@@ -19,8 +19,13 @@ export default function FriendsPage() {
     async function loadData() {
       try {
         const currentUser = await getCurrentUser();
+        
+        // Guest mode - allow viewing
         if (!currentUser) {
-          router.push('/auth/signin');
+          setUser(null);
+          setProfile(null);
+          setFriendships([]);
+          setLoading(false);
           return;
         }
 
@@ -73,7 +78,9 @@ export default function FriendsPage() {
         setFriendships(allFriendships);
       } catch (error) {
         console.error('Error loading friends:', error);
-        router.push('/auth/signin');
+        setUser(null);
+        setProfile(null);
+        setFriendships([]);
       } finally {
         setLoading(false);
       }
@@ -93,20 +100,16 @@ export default function FriendsPage() {
     );
   }
 
-  if (!user) {
-    return null;
-  }
-
-  const userData = {
+  const userData = user ? {
     id: user.id,
     username: profile?.username,
     isAdmin: profile?.is_admin,
-  };
+  } : null;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-blue-50 dark:from-gray-900 dark:via-purple-900/20 dark:to-blue-900/20">
       <Navbar user={userData} />
-      <FriendsClient userId={user.id} friendships={friendships} />
+      <FriendsClient userId={user?.id || null} friendships={friendships} isGuest={!user} />
     </div>
   );
 }

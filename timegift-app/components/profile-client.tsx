@@ -7,9 +7,10 @@ import { supabase } from '@/lib/supabase';
 interface ProfileClientProps {
   user: any;
   profile: any;
+  isGuest?: boolean;
 }
 
-export default function ProfileClient({ user, profile: initialProfile }: ProfileClientProps) {
+export default function ProfileClient({ user, profile: initialProfile, isGuest = false }: ProfileClientProps) {
   const [profile, setProfile] = useState(initialProfile);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -37,6 +38,36 @@ export default function ProfileClient({ user, profile: initialProfile }: Profile
       setSaving(false);
     }
   };
+
+  if (isGuest || !user) {
+    return (
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-12 text-center">
+          <User className="w-20 h-20 text-pink-500 mx-auto mb-6" />
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
+            Your Profile
+          </h1>
+          <p className="text-xl text-gray-600 dark:text-gray-400 mb-8">
+            Sign in to view and manage your profile, update settings, and customize your TimeGift experience!
+          </p>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <a
+              href="/auth/signup"
+              className="px-8 py-4 text-lg font-semibold text-white bg-gradient-to-r from-pink-500 to-purple-600 rounded-full hover:from-pink-600 hover:to-purple-700 transform hover:scale-105 transition-all shadow-lg"
+            >
+              Get Started for Free
+            </a>
+            <a
+              href="/auth/signin"
+              className="px-8 py-4 text-lg font-semibold text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 rounded-full hover:bg-gray-50 dark:hover:bg-gray-600 transition-all shadow-md"
+            >
+              Sign In
+            </a>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">

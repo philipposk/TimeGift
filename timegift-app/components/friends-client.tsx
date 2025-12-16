@@ -5,16 +5,47 @@ import { Users, Search, UserPlus, Check, X, Mail, Clock } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
 interface FriendsClientProps {
-  userId: string;
+  userId: string | null;
   friendships: any[];
+  isGuest?: boolean;
 }
 
-export default function FriendsClient({ userId, friendships: initialFriendships }: FriendsClientProps) {
+export default function FriendsClient({ userId, friendships: initialFriendships, isGuest = false }: FriendsClientProps) {
   const [friendships, setFriendships] = useState(initialFriendships);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [searching, setSearching] = useState(false);
   const [activeTab, setActiveTab] = useState<'friends' | 'pending' | 'search'>('friends');
+
+  if (isGuest || !userId) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-12 text-center">
+          <Users className="w-20 h-20 text-pink-500 mx-auto mb-6" />
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
+            Friends
+          </h1>
+          <p className="text-xl text-gray-600 dark:text-gray-400 mb-8">
+            Sign in to connect with friends, send friend requests, and easily gift time to people you care about!
+          </p>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <a
+              href="/auth/signup"
+              className="px-8 py-4 text-lg font-semibold text-white bg-gradient-to-r from-pink-500 to-purple-600 rounded-full hover:from-pink-600 hover:to-purple-700 transform hover:scale-105 transition-all shadow-lg"
+            >
+              Get Started for Free
+            </a>
+            <a
+              href="/auth/signin"
+              className="px-8 py-4 text-lg font-semibold text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 rounded-full hover:bg-gray-50 dark:hover:bg-gray-600 transition-all shadow-md"
+            >
+              Sign In
+            </a>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // Process friendships
   const acceptedFriends = friendships

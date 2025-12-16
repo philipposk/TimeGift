@@ -22,44 +22,58 @@ export default function DashboardPage() {
     async function loadData() {
       try {
         const currentUser = await getCurrentUser();
+        
+        // Guest mode - allow viewing without auth
         if (!currentUser) {
-          router.push('/auth/signin');
+          setUser(null);
+          setProfile(null);
+          setSentGifts([]);
+          setReceivedGifts([]);
+          setLoading(false);
           return;
         }
 
         setUser(currentUser);
 
         // Get user profile
-        const profileDoc = await getDoc(doc(db, 'users', currentUser.id));
-        const profileData = profileDoc.exists() ? { id: profileDoc.id, ...profileDoc.data() } : null;
-        setProfile(profileData);
+        try {
+          const profileDoc = await getDoc(doc(db, 'users', currentUser.id));
+          const profileData = profileDoc.exists() ? { id: profileDoc.id, ...profileDoc.data() } : null;
+          setProfile(profileData);
 
-        // Get sent gifts
-        const sentGiftsQuery = query(
-          collection(db, 'gifts'),
-          where('sender_id', '==', currentUser.id),
-          orderBy('created_at', 'desc')
-        );
-        const sentSnapshot = await getDocs(sentGiftsQuery);
-        const sent = sentSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        setSentGifts(sent);
+          // Get sent gifts
+          const sentGiftsQuery = query(
+            collection(db, 'gifts'),
+            where('sender_id', '==', currentUser.id),
+            orderBy('created_at', 'desc')
+          );
+          const sentSnapshot = await getDocs(sentGiftsQuery);
+          const sent = sentSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          setSentGifts(sent);
 
-        // Get received gifts
-        const receivedGiftsQuery = query(
-          collection(db, 'gifts'),
-          where('recipient_id', '==', currentUser.id),
-          orderBy('created_at', 'desc')
-        );
-        const receivedSnapshot = await getDocs(receivedGiftsQuery);
-        const received = receivedSnapshot.docs.map(doc => {
-          const data = doc.data();
-          // Get sender info
-          return { id: doc.id, ...data };
-        });
-        setReceivedGifts(received);
+          // Get received gifts
+          const receivedGiftsQuery = query(
+            collection(db, 'gifts'),
+            where('recipient_id', '==', currentUser.id),
+            orderBy('created_at', 'desc')
+          );
+          const receivedSnapshot = await getDocs(receivedGiftsQuery);
+          const received = receivedSnapshot.docs.map(doc => {
+            const data = doc.data();
+            return { id: doc.id, ...data };
+          });
+          setReceivedGifts(received);
+        } catch (dbError) {
+          // If Firebase not configured, just show empty state
+          console.log('Database not configured, showing guest mode');
+        }
       } catch (error) {
         console.error('Error loading dashboard:', error);
-        router.push('/auth/signin');
+        // Don't redirect, just show guest mode
+        setUser(null);
+        setProfile(null);
+        setSentGifts([]);
+        setReceivedGifts([]);
       } finally {
         setLoading(false);
       }
@@ -79,17 +93,13 @@ export default function DashboardPage() {
     );
   }
 
-  if (!user) {
-    return null;
-  }
-
-  const userData = {
+  const userData = user ? {
     id: user.id,
     username: profile?.username,
     displayName: profile?.display_name,
     avatarUrl: profile?.avatar_url,
     isAdmin: profile?.is_admin,
-  };
+  } : null;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-blue-50 dark:from-gray-900 dark:via-purple-900/20 dark:to-blue-900/20">
@@ -98,6 +108,7 @@ export default function DashboardPage() {
         profile={profile} 
         sentGifts={sentGifts} 
         receivedGifts={receivedGifts} 
+        isGuest={!user}
       />
     </div>
   );

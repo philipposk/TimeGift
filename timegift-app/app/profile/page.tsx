@@ -18,20 +18,29 @@ export default function ProfilePage() {
     async function loadData() {
       try {
         const currentUser = await getCurrentUser();
+        
+        // Guest mode - allow viewing
         if (!currentUser) {
-          router.push('/auth/signin');
+          setUser(null);
+          setProfile(null);
+          setLoading(false);
           return;
         }
 
         setUser(currentUser);
 
         // Get user profile
-        const profileDoc = await getDoc(doc(db, 'users', currentUser.id));
-        const profileData = profileDoc.exists() ? { id: profileDoc.id, ...profileDoc.data() } : null;
-        setProfile(profileData);
+        try {
+          const profileDoc = await getDoc(doc(db, 'users', currentUser.id));
+          const profileData = profileDoc.exists() ? { id: profileDoc.id, ...profileDoc.data() } : null;
+          setProfile(profileData);
+        } catch (dbError) {
+          console.log('Database not configured, showing guest mode');
+        }
       } catch (error) {
         console.error('Error loading profile:', error);
-        router.push('/auth/signin');
+        setUser(null);
+        setProfile(null);
       } finally {
         setLoading(false);
       }
@@ -51,22 +60,18 @@ export default function ProfilePage() {
     );
   }
 
-  if (!user) {
-    return null;
-  }
-
-  const userData = {
+  const userData = user ? {
     id: user.id,
     username: profile?.username,
     displayName: profile?.display_name,
     avatarUrl: profile?.avatar_url,
     isAdmin: profile?.is_admin,
-  };
+  } : null;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-blue-50 dark:from-gray-900 dark:via-purple-900/20 dark:to-blue-900/20">
       <Navbar user={userData} />
-      <ProfileClient user={userData} profile={profile} />
+      <ProfileClient user={userData} profile={profile} isGuest={!user} />
     </div>
   );
 }
