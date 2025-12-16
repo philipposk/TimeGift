@@ -5,8 +5,7 @@ import { Camera, Heart, Calendar, MapPin, Sparkles, X, Share2 } from 'lucide-rea
 import Navbar from '@/components/navbar';
 import { getCurrentUser } from '@/utils/auth';
 import { db } from '@/lib/firebase';
-import { collection, query, where, orderBy, getDocs, doc, updateDoc, Timestamp } from 'firebase/firestore';
-import { useRouter } from 'next/navigation';
+import { collection, query, where, orderBy, getDocs } from 'firebase/firestore';
 import Link from 'next/link';
 import ShareMemoryModal from '@/components/share-memory-modal';
 
@@ -21,12 +20,10 @@ interface Memory {
 }
 
 export default function MemoriesPage() {
-  const router = useRouter();
   const [user, setUser] = useState<any>(null);
   const [memories, setMemories] = useState<Memory[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedMemory, setSelectedMemory] = useState<Memory | null>(null);
-  const [showAddMemory, setShowAddMemory] = useState(false);
   const [memoryToShare, setMemoryToShare] = useState<Memory | null>(null);
 
   useEffect(() => {

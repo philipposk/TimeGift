@@ -1,19 +1,18 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { TrendingUp, Gift, Heart, Calendar, BarChart3, PieChart } from 'lucide-react';
+import { TrendingUp, Gift, Heart, Calendar, BarChart3 } from 'lucide-react';
 import Navbar from '@/components/navbar';
 import { getCurrentUser } from '@/utils/auth';
 import { db } from '@/lib/firebase';
 import { collection, query, where, orderBy, getDocs } from 'firebase/firestore';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
   LineChart,
   Line,
   BarChart,
   Bar,
-  PieChart as RechartsPieChart,
+  PieChart,
   Pie,
   Cell,
   XAxis,
@@ -25,7 +24,6 @@ import {
 } from 'recharts';
 
 export default function AnalyticsPage() {
-  const router = useRouter();
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<any>(null);
@@ -329,7 +327,7 @@ export default function AnalyticsPage() {
                 </h3>
                 {stats.statusChartData.length > 0 ? (
                   <ResponsiveContainer width="100%" height={300}>
-                    <RechartsPieChart>
+                    <Pie
                       <Pie
                         data={stats.statusChartData}
                         cx="50%"

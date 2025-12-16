@@ -38,8 +38,8 @@ export default function ProfilePage() {
           const profileDoc = await getDoc(doc(db, 'users', currentUser.id));
           const profileData = profileDoc.exists() ? { id: profileDoc.id, ...profileDoc.data() } : null;
           setProfile(profileData);
-        } catch (dbError) {
-          console.log('Database not configured, showing guest mode');
+              } catch {
+                console.log('Database not configured, showing guest mode');
           setProfile(null);
         }
       } catch (error) {

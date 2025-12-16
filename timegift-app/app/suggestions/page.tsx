@@ -1,12 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Sparkles, Gift, Heart, Calendar, Zap } from 'lucide-react';
+import { Sparkles, Gift, Heart, Zap } from 'lucide-react';
 import Navbar from '@/components/navbar';
 import { getCurrentUser } from '@/utils/auth';
-import { db } from '@/lib/firebase';
-import { collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { generateGiftSuggestions } from '@/lib/ai';
 
@@ -18,7 +15,6 @@ interface Suggestion {
 }
 
 export default function SuggestionsPage() {
-  const router = useRouter();
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);

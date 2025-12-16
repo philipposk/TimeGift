@@ -38,18 +38,17 @@ export async function GET(request: NextRequest) {
       ...doc.data(),
     }));
 
-    // Get gifts that haven't been gifted to in a while
-    const recentGiftsQuery = adminDb
-      .collection('gifts')
-      .where('sender_id', '==', user.uid)
-      .orderBy('created_at', 'desc')
-      .limit(10);
-
-    const recentSnapshot = await recentGiftsQuery.get();
-    const recentGifts = recentSnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
-    }));
+    // Get gifts that haven't been gifted to in a while (for future use)
+    // const recentGiftsQuery = adminDb
+    //   .collection('gifts')
+    //   .where('sender_id', '==', user.uid)
+    //   .orderBy('created_at', 'desc')
+    //   .limit(10);
+    // const recentSnapshot = await recentGiftsQuery.get();
+    // const recentGifts = recentSnapshot.docs.map(doc => ({
+    //   id: doc.id,
+    //   ...doc.data(),
+    // }));
 
     const reminders = [
       ...scheduledGifts.map(gift => ({
