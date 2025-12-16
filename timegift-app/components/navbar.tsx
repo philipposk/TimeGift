@@ -2,9 +2,9 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Gift, User, Users, Settings, Moon, Sun, Menu, X, Calculator, Sparkles, Camera, BarChart3 } from 'lucide-react';
+import { Gift, User, Users, Settings, Moon, Sun, Menu, X, Calculator, Sparkles, Camera, BarChart3, ChevronDown, Home, Heart, Wrench, Info } from 'lucide-react';
 import { useTheme } from '@/lib/theme-provider';
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 
 interface NavbarProps {
   user?: {
@@ -14,30 +14,88 @@ interface NavbarProps {
   } | null;
 }
 
+interface NavItem {
+  href: string;
+  label: string;
+  icon: any;
+  auth: boolean;
+}
+
+interface NavCategory {
+  label: string;
+  icon: any;
+  items: NavItem[];
+}
+
 export default function Navbar({ user }: NavbarProps) {
   const pathname = usePathname();
   const { theme, setTheme, actualTheme } = useTheme();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+  const dropdownRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
 
   const toggleTheme = () => {
     setTheme(actualTheme === 'light' ? 'dark' : 'light');
   };
 
-  const navItems = [
-    { href: '/dashboard', label: 'Dashboard', icon: Gift, auth: false }, // Allow guests
-    { href: '/profile', label: 'Profile', icon: User, auth: false }, // Allow guests
-    { href: '/friends', label: 'Friends', icon: Users, auth: false }, // Allow guests
-    { href: '/memories', label: 'Memories', icon: Camera, auth: false },
-    { href: '/analytics', label: 'Analytics', icon: BarChart3, auth: false },
-    { href: '/suggestions', label: 'AI Suggestions', icon: Sparkles, auth: false },
-    { href: '/templates', label: 'Templates', icon: Sparkles, auth: false },
-    { href: '/calculator', label: 'Time Calculator', icon: Calculator, auth: false },
-    { href: '/about', label: 'About', icon: null, auth: false },
+  // Organized navigation categories
+  const navCategories: NavCategory[] = [
+    {
+      label: 'Main',
+      icon: Home,
+      items: [
+        { href: '/dashboard', label: 'Dashboard', icon: Gift, auth: false },
+        { href: '/profile', label: 'Profile', icon: User, auth: false },
+      ],
+    },
+    {
+      label: 'Social',
+      icon: Users,
+      items: [
+        { href: '/friends', label: 'Friends', icon: Users, auth: false },
+        { href: '/memories', label: 'Memories', icon: Camera, auth: false },
+      ],
+    },
+    {
+      label: 'Tools',
+      icon: Wrench,
+      items: [
+        { href: '/templates', label: 'Templates', icon: Sparkles, auth: false },
+        { href: '/suggestions', label: 'AI Suggestions', icon: Sparkles, auth: false },
+        { href: '/calculator', label: 'Time Calculator', icon: Calculator, auth: false },
+      ],
+    },
+    {
+      label: 'Insights',
+      icon: BarChart3,
+      items: [
+        { href: '/analytics', label: 'Analytics', icon: BarChart3, auth: false },
+      ],
+    },
+  ];
+
+  // Standalone items (no category)
+  const standaloneItems: NavItem[] = [
+    { href: '/about', label: 'About', icon: Info, auth: false },
   ];
 
   if (user?.isAdmin) {
-    navItems.push({ href: '/admin', label: 'Admin', icon: Settings, auth: true });
+    standaloneItems.push({ href: '/admin', label: 'Admin', icon: Settings, auth: true });
   }
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      Object.keys(dropdownRefs.current).forEach((key) => {
+        if (dropdownRefs.current[key] && !dropdownRefs.current[key]?.contains(event.target as Node)) {
+          setOpenDropdown(null);
+        }
+      });
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   return (
     <nav className="sticky top-0 z-50 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
@@ -52,8 +110,59 @@ export default function Navbar({ user }: NavbarProps) {
           </Link>
 
           {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center space-x-6">
-            {navItems.map((item) => {
+          <div className="hidden md:flex items-center space-x-4">
+            {/* Category Dropdowns */}
+            {navCategories.map((category) => {
+              const CategoryIcon = category.icon;
+              const hasActiveItem = category.items.some(item => pathname === item.href);
+              const isOpen = openDropdown === category.label;
+              
+              return (
+                <div key={category.label} className="relative" ref={(el) => (dropdownRefs.current[category.label] = el)}>
+                  <button
+                    onClick={() => setOpenDropdown(isOpen ? null : category.label)}
+                    className={`flex items-center space-x-1 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                      hasActiveItem
+                        ? 'text-pink-600 dark:text-pink-400 bg-pink-50 dark:bg-pink-900/20'
+                        : 'text-gray-700 dark:text-gray-300 hover:text-pink-600 dark:hover:text-pink-400'
+                    }`}
+                  >
+                    <CategoryIcon className="w-4 h-4" />
+                    <span>{category.label}</span>
+                    <ChevronDown className={`w-3 h-3 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                  </button>
+                  
+                  {isOpen && (
+                    <div className="absolute top-full left-0 mt-1 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 py-2 z-50">
+                      {category.items.map((item) => {
+                        if (item.auth && !user) return null;
+                        const Icon = item.icon;
+                        const isActive = pathname === item.href;
+                        
+                        return (
+                          <Link
+                            key={item.href}
+                            href={item.href}
+                            onClick={() => setOpenDropdown(null)}
+                            className={`flex items-center space-x-2 px-4 py-2 text-sm transition-colors ${
+                              isActive
+                                ? 'text-pink-600 dark:text-pink-400 bg-pink-50 dark:bg-pink-900/20'
+                                : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                            }`}
+                          >
+                            {Icon && <Icon className="w-4 h-4" />}
+                            <span>{item.label}</span>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+
+            {/* Standalone Items */}
+            {standaloneItems.map((item) => {
               if (item.auth && !user) return null;
               const Icon = item.icon;
               const isActive = pathname === item.href;
@@ -122,8 +231,59 @@ export default function Navbar({ user }: NavbarProps) {
       {/* Mobile Menu */}
       {mobileMenuOpen && (
         <div className="md:hidden border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
-          <div className="px-4 py-3 space-y-2">
-            {navItems.map((item) => {
+          <div className="px-4 py-3 space-y-1">
+            {/* Categories with sections */}
+            {navCategories.map((category) => {
+              const CategoryIcon = category.icon;
+              const [categoryOpen, setCategoryOpen] = useState(false);
+              
+              return (
+                <div key={category.label}>
+                  <button
+                    onClick={() => setCategoryOpen(!categoryOpen)}
+                    className="flex items-center justify-between w-full px-3 py-2 rounded-md text-sm font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <CategoryIcon className="w-4 h-4" />
+                      <span>{category.label}</span>
+                    </div>
+                    <ChevronDown className={`w-4 h-4 transition-transform ${categoryOpen ? 'rotate-180' : ''}`} />
+                  </button>
+                  {categoryOpen && (
+                    <div className="ml-4 mt-1 space-y-1">
+                      {category.items.map((item) => {
+                        if (item.auth && !user) return null;
+                        const Icon = item.icon;
+                        const isActive = pathname === item.href;
+                        
+                        return (
+                          <Link
+                            key={item.href}
+                            href={item.href}
+                            onClick={() => {
+                              setMobileMenuOpen(false);
+                              setCategoryOpen(false);
+                            }}
+                            className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm transition-colors ${
+                              isActive
+                                ? 'text-pink-600 dark:text-pink-400 bg-pink-50 dark:bg-pink-900/20'
+                                : 'text-gray-600 dark:text-gray-400'
+                            }`}
+                          >
+                            {Icon && <Icon className="w-4 h-4" />}
+                            <span>{item.label}</span>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+
+            {/* Standalone Items */}
+            {standaloneItems.map((item) => {
+              if (item.auth && !user) return null;
               const Icon = item.icon;
               const isActive = pathname === item.href;
               
