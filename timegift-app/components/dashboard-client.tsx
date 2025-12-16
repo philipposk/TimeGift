@@ -6,6 +6,7 @@ import Link from 'next/link';
 import CreateGiftModal from './create-gift-modal';
 import AcceptGiftModal from './accept-gift-modal';
 import AddMemoryModal from './add-memory-modal';
+import SmartSuggestions from './smart-suggestions';
 
 interface DashboardClientProps {
   profile: any;
@@ -150,6 +151,13 @@ export default function DashboardClient({ profile, sentGifts, receivedGifts, isG
           </div>
         </div>
       </div>
+
+      {/* Smart Suggestions & Reminders */}
+      {!isGuest && (
+        <div className="mb-8">
+          <SmartSuggestions />
+        </div>
+      )}
 
       {/* Quick Actions */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">

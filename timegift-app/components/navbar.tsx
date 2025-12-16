@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Gift, User, Users, Settings, Moon, Sun, Menu, X, Calculator, Sparkles, Camera } from 'lucide-react';
+import { Gift, User, Users, Settings, Moon, Sun, Menu, X, Calculator, Sparkles, Camera, BarChart3 } from 'lucide-react';
 import { useTheme } from '@/lib/theme-provider';
 import { useState } from 'react';
 
@@ -28,6 +28,8 @@ export default function Navbar({ user }: NavbarProps) {
     { href: '/profile', label: 'Profile', icon: User, auth: false }, // Allow guests
     { href: '/friends', label: 'Friends', icon: Users, auth: false }, // Allow guests
     { href: '/memories', label: 'Memories', icon: Camera, auth: false },
+    { href: '/analytics', label: 'Analytics', icon: BarChart3, auth: false },
+    { href: '/suggestions', label: 'AI Suggestions', icon: Sparkles, auth: false },
     { href: '/templates', label: 'Templates', icon: Sparkles, auth: false },
     { href: '/calculator', label: 'Time Calculator', icon: Calculator, auth: false },
     { href: '/about', label: 'About', icon: null, auth: false },
