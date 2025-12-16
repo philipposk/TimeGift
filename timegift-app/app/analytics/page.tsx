@@ -327,7 +327,7 @@ export default function AnalyticsPage() {
                 </h3>
                 {stats.statusChartData.length > 0 ? (
                   <ResponsiveContainer width="100%" height={300}>
-                    <Pie
+                    <PieChart>
                       <Pie
                         data={stats.statusChartData}
                         cx="50%"
@@ -343,7 +343,7 @@ export default function AnalyticsPage() {
                         ))}
                       </Pie>
                       <Tooltip />
-                    </RechartsPieChart>
+                    </PieChart>
                   </ResponsiveContainer>
                 ) : (
                   <div className="h-300 flex items-center justify-center text-gray-400">
