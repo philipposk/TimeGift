@@ -40,7 +40,7 @@
 - Functions: camelCase (e.g., `sendGift()`)
 - Constants: UPPER_SNAKE_CASE
 
-## Git Commits
+## Git Commits & Deployment
 - Use conventional commits format
 - feat: new feature
 - fix: bug fix
@@ -48,6 +48,33 @@
 - style: formatting
 - refactor: code restructuring
 - test: adding tests
+
+## Automatic Deployment Workflow
+**CRITICAL: After every code change, you MUST:**
+1. Commit all changes with descriptive message
+2. Push to GitHub (main branch)
+3. Deploy to timegift.6x7.gr via Vercel
+
+**Deployment Steps:**
+```bash
+# 1. Commit and push
+cd "/Users/phktistakis/Devoloper Projects/TimeGift"
+git add -A
+git commit -m "Descriptive commit message"
+git push origin HEAD:main
+
+# 2. Deploy to Vercel (if Vercel CLI available)
+cd timegift-app
+vercel --prod
+
+# OR trigger Vercel deployment via GitHub (automatic if connected)
+# Vercel auto-deploys on push to main branch
+```
+
+**Always verify:**
+- Changes are committed and pushed
+- Deployment is triggered (check Vercel dashboard)
+- Site is live at https://timegift.6x7.gr
 
 ## API Routes
 - Use Next.js Route Handlers
