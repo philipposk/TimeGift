@@ -1,10 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import { Gift, Clock, TrendingUp, Calendar, Plus, User, Heart, Bell } from 'lucide-react';
+import { Gift, Clock, TrendingUp, Calendar, Plus, User, Heart, Bell, Camera } from 'lucide-react';
 import Link from 'next/link';
 import CreateGiftModal from './create-gift-modal';
 import AcceptGiftModal from './accept-gift-modal';
+import AddMemoryModal from './add-memory-modal';
 
 interface DashboardClientProps {
   profile: any;
@@ -16,6 +17,7 @@ interface DashboardClientProps {
 export default function DashboardClient({ profile, sentGifts, receivedGifts, isGuest = false }: DashboardClientProps) {
   const [showCreateGift, setShowCreateGift] = useState(false);
   const [giftToAccept, setGiftToAccept] = useState<string | null>(null);
+  const [giftToAddMemory, setGiftToAddMemory] = useState<any | null>(null);
 
   // Calculate statistics
   const totalHoursGifted = profile?.total_hours_gifted || 0;
@@ -238,6 +240,24 @@ export default function DashboardClient({ profile, sentGifts, receivedGifts, isG
                       >
                         Accept →
                       </button>
+                    )}
+                    {gift.status === 'completed' && !gift.memory_photo_url && !gift.memory_story && (
+                      <button
+                        onClick={() => setGiftToAddMemory(gift)}
+                        className="flex items-center space-x-1 text-sm font-semibold text-purple-600 dark:text-purple-400 hover:underline"
+                      >
+                        <Camera className="w-4 h-4" />
+                        <span>Add Memory</span>
+                      </button>
+                    )}
+                    {gift.status === 'completed' && (gift.memory_photo_url || gift.memory_story) && (
+                      <Link
+                        href="/memories"
+                        className="flex items-center space-x-1 text-sm font-semibold text-green-600 dark:text-green-400 hover:underline"
+                      >
+                        <Camera className="w-4 h-4" />
+                        <span>View Memory</span>
+                      </Link>
                     )}
                   </div>
                 </div>
