@@ -87,16 +87,22 @@ export default function Navbar({ user }: NavbarProps) {
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
+      let clickedInside = false;
       Object.keys(dropdownRefs.current).forEach((key) => {
-        if (dropdownRefs.current[key] && !dropdownRefs.current[key]?.contains(event.target as Node)) {
-          setOpenDropdown(null);
+        if (dropdownRefs.current[key]?.contains(event.target as Node)) {
+          clickedInside = true;
         }
       });
+      if (!clickedInside) {
+        setOpenDropdown(null);
+      }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+    if (openDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [openDropdown]);
 
   return (
     <nav className="sticky top-0 z-50 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
@@ -134,7 +140,10 @@ export default function Navbar({ user }: NavbarProps) {
                   </button>
                   
                   {isOpen && (
-                    <div className="absolute top-full left-0 mt-1 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 py-2 z-50">
+                    <div 
+                      className="absolute top-full left-0 mt-1 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 py-2 z-50"
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       {category.items.map((item) => {
                         if (item.auth && !user) return null;
                         const Icon = item.icon;
@@ -144,7 +153,10 @@ export default function Navbar({ user }: NavbarProps) {
                           <Link
                             key={item.href}
                             href={item.href}
-                            onClick={() => setOpenDropdown(null)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setOpenDropdown(null);
+                            }}
                             className={`flex items-center space-x-2 px-4 py-2 text-sm transition-colors ${
                               isActive
                                 ? 'text-pink-600 dark:text-pink-400 bg-pink-50 dark:bg-pink-900/20'
