@@ -136,3 +136,13 @@ export default function ShareGiftButton({ gift, variant = 'button' }: ShareGiftB
     </button>
   );
 }
+
+
+
+
+
+
+
+
+
+

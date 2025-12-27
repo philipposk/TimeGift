@@ -110,3 +110,13 @@ vercel --prod
 - **Vercel Dashboard:** https://vercel.com/dashboard
 - **GitHub Repo:** https://github.com/philipposk/TimeGift
 - **Deployment Docs:** See `DEPLOYMENT_AUTO.md`
+
+
+
+
+
+
+
+
+
+
