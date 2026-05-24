@@ -2,6 +2,7 @@ import { NextResponse, NextRequest } from 'next/server';
 import { generateGiftSuggestions } from '@/lib/ai';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
 import { checkAndRecordRateLimit } from '@/lib/rate-limit';
+import { getSupabaseServiceClient } from '@/lib/supabase';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -19,14 +20,32 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 });
     }
 
-    const body = await request.json();
+    const body = await request.json().catch(() => ({}));
     const { relationship, occasion } = body;
 
     if (!relationship) {
       return NextResponse.json({ error: 'Relationship is required' }, { status: 400 });
     }
 
-    const suggestions = await generateGiftSuggestions(relationship, occasion || null);
+    // Pull recent context for personalization.
+    const admin = getSupabaseServiceClient();
+    const { data: recent } = await admin
+      .from('gifts')
+      .select('recipient_email, recipient_phone, purpose_details')
+      .eq('sender_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(5);
+
+    const suggestions = await generateGiftSuggestions(relationship, occasion || null, {
+      recentRecipients: (recent || [])
+        .map((g) => (g.recipient_email || g.recipient_phone || '').split('@')[0])
+        .filter(Boolean),
+      recentPurposes: (recent || [])
+        .map((g) => g.purpose_details)
+        .filter((s): s is string => !!s),
+      occasion: occasion || null,
+    });
+
     return NextResponse.json({ suggestions });
   } catch (error: any) {
     console.error('Error generating suggestions:', error);

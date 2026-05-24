@@ -8,10 +8,12 @@ on:
     - cron: '*/15 * * * *'
     # Reminders: daily 09:00 UTC
     - cron: '0 9 * * *'
+    # Auto-complete scheduled gifts 24h past: every 6 hours
+    - cron: '0 */6 * * *'
   workflow_dispatch:
     inputs:
       route:
-        description: 'Which cron route to hit (decay, random-exchange, send-reminders, all)'
+        description: 'Which cron route to hit (decay, random-exchange, send-reminders, auto-complete, all)'
         required: false
         default: 'all'
 
@@ -32,9 +34,10 @@ jobs:
             exit 0
           fi
           case "${{ github.event.schedule }}" in
-            "0 3 * * *")   echo "route=decay" >> $GITHUB_OUTPUT ;;
+            "0 3 * * *")    echo "route=decay" >> $GITHUB_OUTPUT ;;
             "*/15 * * * *") echo "route=random-exchange" >> $GITHUB_OUTPUT ;;
-            "0 9 * * *")   echo "route=send-reminders" >> $GITHUB_OUTPUT ;;
+            "0 9 * * *")    echo "route=send-reminders" >> $GITHUB_OUTPUT ;;
+            "0 */6 * * *")  echo "route=auto-complete" >> $GITHUB_OUTPUT ;;
             *) echo "route=all" >> $GITHUB_OUTPUT ;;
           esac
 
@@ -59,9 +62,11 @@ jobs:
             decay)            call /api/decay ;;
             random-exchange)  call /api/random-exchange ;;
             send-reminders)   call /api/cron/send-reminders ;;
+            auto-complete)    call /api/cron/auto-complete ;;
             all)
               call /api/decay
               call /api/random-exchange
               call /api/cron/send-reminders
+              call /api/cron/auto-complete
               ;;
           esac

@@ -33,17 +33,22 @@ export default function DashboardPage() {
 
         const supabase = getSupabaseBrowserClient();
 
+        const ACTIVE_STATUSES = ['pending', 'accepted', 'scheduled', 'completed'];
         const [{ data: profileData }, { data: sent }, { data: received }] = await Promise.all([
           supabase.from('users').select('*').eq('id', currentUser.id).single(),
           supabase
             .from('gifts')
             .select('*')
             .eq('sender_id', currentUser.id)
+            .in('status', ACTIVE_STATUSES)
+            .eq('archived_by_sender', false)
             .order('created_at', { ascending: false }),
           supabase
             .from('gifts')
             .select('*')
             .eq('recipient_id', currentUser.id)
+            .in('status', ACTIVE_STATUSES)
+            .eq('archived_by_recipient', false)
             .order('created_at', { ascending: false }),
         ]);
 

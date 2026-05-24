@@ -12,6 +12,7 @@ interface NotificationContext {
   senderId: string;
   senderName?: string | null;
   message: string;
+  claimUrl?: string | null;
 }
 
 async function loadSettings() {
@@ -45,6 +46,7 @@ export async function notifyGiftCreated(context: NotificationContext) {
 
   const notificationTitle = 'You received a new TimeGift';
   const notificationBody = context.message;
+  const claimSnippet = context.claimUrl ? ` Claim: ${context.claimUrl}` : '';
 
   if (context.recipientId) {
     await admin.from('notifications').insert({
@@ -60,7 +62,7 @@ export async function notifyGiftCreated(context: NotificationContext) {
   if (channels.includes('sms') && context.recipientPhone) {
     await sendSMSNotification(
       context.recipientPhone,
-      `${context.senderName || 'Someone special'} says: ${context.message}`,
+      `${context.senderName || 'Someone special'} sent you a TimeGift: "${context.message}".${claimSnippet}`,
       vonageConfig?.api_key,
       vonageConfig?.api_secret,
       vonageConfig?.from_number || 'TimeGift'
@@ -70,7 +72,7 @@ export async function notifyGiftCreated(context: NotificationContext) {
   if (channels.includes('whatsapp') && context.recipientPhone) {
     await sendWhatsAppNotification(
       context.recipientPhone,
-      `${context.senderName || 'Someone special'} sent you a TimeGift`,
+      `${context.senderName || 'Someone special'} sent you a TimeGift.${claimSnippet}`,
       whatsappConfig?.api_key,
       whatsappConfig?.api_secret || vonageConfig?.api_secret,
       whatsappConfig?.from_number || vonageConfig?.whatsapp_number
