@@ -3,10 +3,9 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getCurrentUser } from '@/utils/auth';
+import { getSupabaseBrowserClient } from '@/lib/supabase';
 import Navbar from '@/components/navbar';
 import FriendsClient from '@/components/friends-client';
-import { doc, getDoc, collection, query, where, getDocs, or } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
 
 export default function FriendsPage() {
   const router = useRouter();
@@ -19,8 +18,7 @@ export default function FriendsPage() {
     async function loadData() {
       try {
         const currentUser = await getCurrentUser();
-        
-        // Guest mode - allow viewing
+
         if (!currentUser) {
           setUser(null);
           setProfile(null);
@@ -31,57 +29,28 @@ export default function FriendsPage() {
 
         setUser(currentUser);
 
-        // Get user profile
-        if (!db) {
-          setProfile(null);
-          setFriendships([]);
-          return;
-        }
+        const supabase = getSupabaseBrowserClient();
 
-        const profileDoc = await getDoc(doc(db, 'users', currentUser.id));
-        const profileData = profileDoc.exists() ? { id: profileDoc.id, ...profileDoc.data() } : null;
+        const { data: profileData } = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', currentUser.id)
+          .single();
         setProfile(profileData);
 
-        // Get friendships (both where user is user_id or friend_id)
-        const friendshipsAsUser = query(
-          collection(db, 'friendships'),
-          where('user_id', '==', currentUser.id)
-        );
-        const friendshipsAsFriend = query(
-          collection(db, 'friendships'),
-          where('friend_id', '==', currentUser.id)
-        );
-
-        const [userSnapshot, friendSnapshot] = await Promise.all([
-          getDocs(friendshipsAsUser),
-          getDocs(friendshipsAsFriend),
+        // Pull friendships in both directions with the related user joined.
+        const [{ data: asUser }, { data: asFriend }] = await Promise.all([
+          supabase
+            .from('friendships')
+            .select('*, friend:users!friendships_friend_id_fkey(*)')
+            .eq('user_id', currentUser.id),
+          supabase
+            .from('friendships')
+            .select('*, user:users!friendships_user_id_fkey(*)')
+            .eq('friend_id', currentUser.id),
         ]);
 
-        const allFriendships: any[] = [];
-
-        // Process friendships where current user is user_id
-        for (const docSnap of userSnapshot.docs) {
-          const data = docSnap.data();
-          const friendDoc = await getDoc(doc(db, 'users', data.friend_id));
-          allFriendships.push({
-            id: docSnap.id,
-            ...data,
-            friend: friendDoc.exists() ? { id: friendDoc.id, ...friendDoc.data() } : null,
-          });
-        }
-
-        // Process friendships where current user is friend_id
-        for (const docSnap of friendSnapshot.docs) {
-          const data = docSnap.data();
-          const userDoc = await getDoc(doc(db, 'users', data.user_id));
-          allFriendships.push({
-            id: docSnap.id,
-            ...data,
-            user: userDoc.exists() ? { id: userDoc.id, ...userDoc.data() } : null,
-          });
-        }
-
-        setFriendships(allFriendships);
+        setFriendships([...(asUser || []), ...(asFriend || [])]);
       } catch (error) {
         console.error('Error loading friends:', error);
         setUser(null);

@@ -1,10 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Sparkles, Gift, Clock, Heart, X } from 'lucide-react';
+import { Sparkles, Gift, Clock, X } from 'lucide-react';
 import { getCurrentUser } from '@/utils/auth';
-import { db } from '@/lib/firebase';
-import { collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
+import { getSupabaseBrowserClient } from '@/lib/supabase';
 import Link from 'next/link';
 
 interface Reminder {
@@ -32,14 +31,13 @@ export default function SmartSuggestions() {
     async function loadData() {
       try {
         const currentUser = await getCurrentUser();
-        if (!currentUser || !db) {
+        if (!currentUser) {
           setReminders([]);
           setSuggestions([]);
           setLoading(false);
           return;
         }
 
-        // Get reminders
         try {
           const response = await fetch('/api/reminders');
           const data = await response.json();
@@ -48,25 +46,21 @@ export default function SmartSuggestions() {
           console.error('Error loading reminders:', error);
         }
 
-        // Get recent gifts to generate suggestions
-        const recentGiftsQuery = query(
-          collection(db, 'gifts'),
-          where('sender_id', '==', currentUser.id),
-          orderBy('created_at', 'desc'),
-          limit(5)
-        );
+        const supabase = getSupabaseBrowserClient();
+        const { data: recentGifts } = await supabase
+          .from('gifts')
+          .select('*')
+          .eq('sender_id', currentUser.id)
+          .order('created_at', { ascending: false })
+          .limit(5);
 
-        const recentSnapshot = await getDocs(recentGiftsQuery);
-        const recentGifts = recentSnapshot.docs.map(doc => doc.data());
-
-        // Generate AI suggestions based on recent activity
-        if (recentGifts.length > 0) {
+        if (recentGifts && recentGifts.length > 0) {
           try {
             const suggestionResponse = await fetch('/api/ai/suggest-gifts', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
-                relationship: 'friend', // Could be enhanced to detect from recent gifts
+                relationship: 'friend',
                 occasion: null,
               }),
             });
@@ -98,7 +92,6 @@ export default function SmartSuggestions() {
 
   return (
     <div className="space-y-4">
-      {/* Reminders */}
       {visibleReminders.length > 0 && (
         <div className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-xl p-6 border border-blue-200 dark:border-blue-800">
           <div className="flex items-center justify-between mb-4">
@@ -147,7 +140,6 @@ export default function SmartSuggestions() {
         </div>
       )}
 
-      {/* AI Suggestions */}
       {suggestions.length > 0 && (
         <div className="bg-gradient-to-r from-pink-50 to-purple-50 dark:from-pink-900/20 dark:to-purple-900/20 rounded-xl p-6 border border-pink-200 dark:border-pink-800">
           <div className="flex items-center space-x-2 mb-4">

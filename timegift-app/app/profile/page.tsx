@@ -3,10 +3,9 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getCurrentUser } from '@/utils/auth';
+import { getSupabaseBrowserClient } from '@/lib/supabase';
 import Navbar from '@/components/navbar';
 import ProfileClient from '@/components/profile-client';
-import { doc, getDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -18,8 +17,7 @@ export default function ProfilePage() {
     async function loadData() {
       try {
         const currentUser = await getCurrentUser();
-        
-        // Guest mode - allow viewing
+
         if (!currentUser) {
           setUser(null);
           setProfile(null);
@@ -29,19 +27,14 @@ export default function ProfilePage() {
 
         setUser(currentUser);
 
-        // Get user profile
-        try {
-          if (!db) {
-            setProfile(null);
-            return;
-          }
-          const profileDoc = await getDoc(doc(db, 'users', currentUser.id));
-          const profileData = profileDoc.exists() ? { id: profileDoc.id, ...profileDoc.data() } : null;
-          setProfile(profileData);
-              } catch {
-                console.log('Database not configured, showing guest mode');
-          setProfile(null);
-        }
+        const supabase = getSupabaseBrowserClient();
+        const { data: profileData } = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', currentUser.id)
+          .single();
+
+        setProfile(profileData);
       } catch (error) {
         console.error('Error loading profile:', error);
         setUser(null);

@@ -5,9 +5,10 @@ import { useRouter } from 'next/navigation';
 import { getCurrentUser } from '@/utils/auth';
 import Navbar from '@/components/navbar';
 import AdminPanelClient from '@/components/admin-panel-client';
-import { doc, getDoc, collection, query, orderBy, getDocs } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { getSupabaseBrowserClient } from '@/lib/supabase';
 import Link from 'next/link';
+
+export const dynamic = 'force-dynamic';
 
 export default function AdminPage() {
   const router = useRouter();
@@ -26,14 +27,10 @@ export default function AdminPage() {
         }
 
         setUser(currentUser);
-
-        // Get user profile
-        const profileDoc = await getDoc(doc(db, 'users', currentUser.id));
-        const profileData = profileDoc.exists() ? { id: profileDoc.id, ...profileDoc.data() } : null;
-        setProfile(profileData);
+        setProfile(currentUser);
 
         // Guest mode or non-admin - show message
-        if (!profileData?.is_admin) {
+        if (!currentUser?.isAdmin) {
           setUser(null);
           setProfile(null);
           setSettings([]);
@@ -41,18 +38,18 @@ export default function AdminPage() {
           return;
         }
 
-        // Get admin settings
-        if (!db) {
+        const supabaseClient = getSupabaseBrowserClient();
+        const { data: settingsData, error: settingsError } = await supabaseClient
+          .from('admin_settings')
+          .select('*')
+          .order('setting_key');
+
+        if (settingsError) {
+          console.error('Error loading settings:', settingsError);
           setSettings([]);
-          return;
+        } else {
+          setSettings(settingsData || []);
         }
-        const settingsQuery = query(collection(db, 'admin_settings'), orderBy('setting_key'));
-        const settingsSnapshot = await getDocs(settingsQuery);
-        const settingsData = settingsSnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data(),
-        }));
-        setSettings(settingsData);
       } catch (error) {
         console.error('Error loading admin page:', error);
         router.push('/auth/signin');
@@ -76,7 +73,7 @@ export default function AdminPage() {
   }
 
   // Show guest/non-admin message
-  if (!user || !profile?.is_admin) {
+  if (!user || !profile?.isAdmin) {
     const userData = user ? {
       id: user.id,
       username: profile?.username,
@@ -120,7 +117,7 @@ export default function AdminPage() {
   const userData = {
     id: user.id,
     username: profile?.username,
-    isAdmin: profile?.is_admin,
+    isAdmin: profile?.isAdmin,
   };
 
   return (

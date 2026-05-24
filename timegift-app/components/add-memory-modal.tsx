@@ -3,10 +3,7 @@
 import { useState } from 'react';
 import { X, Upload, MapPin, FileText } from 'lucide-react';
 import { getCurrentUser } from '@/utils/auth';
-import { db } from '@/lib/firebase';
-import { doc, updateDoc, Timestamp } from 'firebase/firestore';
-import { storage } from '@/lib/firebase';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { getSupabaseBrowserClient } from '@/lib/supabase';
 
 interface AddMemoryModalProps {
   giftId: string;
@@ -27,9 +24,7 @@ export default function AddMemoryModal({ giftId, giftMessage, onClose, onSuccess
     if (file) {
       setPhoto(file);
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setPhotoPreview(reader.result as string);
-      };
+      reader.onloadend = () => setPhotoPreview(reader.result as string);
       reader.readAsDataURL(file);
     }
   };
@@ -41,7 +36,7 @@ export default function AddMemoryModal({ giftId, giftMessage, onClose, onSuccess
     }
 
     const currentUser = await getCurrentUser();
-    if (!currentUser || !db) {
+    if (!currentUser) {
       alert('Please sign in to add a memory');
       return;
     }
@@ -49,23 +44,31 @@ export default function AddMemoryModal({ giftId, giftMessage, onClose, onSuccess
     setUploading(true);
 
     try {
+      const supabase = getSupabaseBrowserClient();
       let photoUrl = '';
 
-      // Upload photo if provided
-      if (photo && storage) {
-        const storageRef = ref(storage, `memories/${giftId}/${Date.now()}_${photo.name}`);
-        await uploadBytes(storageRef, photo);
-        photoUrl = await getDownloadURL(storageRef);
+      if (photo) {
+        const path = `${currentUser.id}/${giftId}/${Date.now()}_${photo.name}`;
+        const { error: uploadErr } = await supabase.storage
+          .from('memories')
+          .upload(path, photo, { upsert: false });
+        if (uploadErr) throw uploadErr;
+
+        const { data: pub } = supabase.storage.from('memories').getPublicUrl(path);
+        photoUrl = pub.publicUrl;
       }
 
-      // Update gift with memory data
-      await updateDoc(doc(db, 'gifts', giftId), {
-        memory_photo_url: photoUrl || null,
-        memory_story: story.trim() || null,
-        memory_location: location.trim() || null,
-        memory_created_at: Timestamp.now(),
-        updated_at: Timestamp.now(),
-      });
+      const { error: updateErr } = await supabase
+        .from('gifts')
+        .update({
+          memory_photo_url: photoUrl || null,
+          memory_story: story.trim() || null,
+          memory_location: location.trim() || null,
+          memory_created_at: new Date().toISOString(),
+        })
+        .eq('id', giftId);
+
+      if (updateErr) throw updateErr;
 
       onSuccess();
       onClose();
@@ -98,7 +101,6 @@ export default function AddMemoryModal({ giftId, giftMessage, onClose, onSuccess
             </div>
           )}
 
-          {/* Photo Upload */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Photo (Optional)
@@ -136,7 +138,6 @@ export default function AddMemoryModal({ giftId, giftMessage, onClose, onSuccess
             )}
           </div>
 
-          {/* Story */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               <FileText className="w-4 h-4 inline mr-1" />
@@ -151,7 +152,6 @@ export default function AddMemoryModal({ giftId, giftMessage, onClose, onSuccess
             />
           </div>
 
-          {/* Location */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               <MapPin className="w-4 h-4 inline mr-1" />
@@ -166,7 +166,6 @@ export default function AddMemoryModal({ giftId, giftMessage, onClose, onSuccess
             />
           </div>
 
-          {/* Actions */}
           <div className="flex items-center justify-end space-x-3 pt-4 border-t border-gray-200 dark:border-gray-700">
             <button
               onClick={onClose}

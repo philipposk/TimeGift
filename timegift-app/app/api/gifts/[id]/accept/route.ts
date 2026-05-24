@@ -1,46 +1,55 @@
 import { NextResponse, NextRequest } from 'next/server';
-import { getServerUser, adminDb } from '@/lib/firebase-admin';
+import { createSupabaseServerClient } from '@/lib/supabase-server';
+import { getSupabaseServiceClient } from '@/lib/supabase';
 import { notifyGiftAccepted } from '@/utils/notifications';
-import { Timestamp } from 'firebase-admin/firestore';
+
+export const dynamic = 'force-dynamic';
+export const dynamicParams = true;
+export const runtime = 'nodejs';
+export const fetchCache = 'force-no-store';
 
 interface AcceptPayload {
   scheduledDate?: string | null;
-  userId?: string; // Client sends this for now
 }
 
 export async function POST(
   request: NextRequest,
-  { params }: any
+  context: { params: Promise<{ id: string }> }
 ) {
-  const giftId = params.id;
+  const params = await context.params;
+  const giftId = params?.id;
 
   try {
     if (!giftId) {
       return NextResponse.json({ error: 'Gift ID is required' }, { status: 400 });
     }
 
-    const payload = (await request.json()) as AcceptPayload;
-    
-    // Get user - for now accept userId from payload, later use token verification
-    const user = await getServerUser(request) || (payload.userId ? { uid: payload.userId } : null);
-    
-    if (!user || !user.uid) {
+    const supabase = await createSupabaseServerClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const userId = user.uid;
+    const payload = (await request.json().catch(() => ({}))) as AcceptPayload;
+    const userId = user.id;
 
-    // Get gift
-    const giftDoc = await adminDb.collection('gifts').doc(giftId).get();
-    if (!giftDoc.exists) {
+    // Read gift with service client so the entitlement check works for
+    // email/phone-only recipients (not yet linked by recipient_id).
+    const admin = getSupabaseServiceClient();
+    const { data: gift, error: giftErr } = await admin
+      .from('gifts')
+      .select('*')
+      .eq('id', giftId)
+      .single();
+    if (giftErr || !gift) {
       return NextResponse.json({ error: 'Gift not found' }, { status: 404 });
     }
 
-    const gift = { id: giftDoc.id, ...giftDoc.data() };
-
-    // Ensure the current user is entitled to accept the gift
-    const recipientProfileDoc = await adminDb.collection('users').doc(userId).get();
-    const recipientProfile = recipientProfileDoc.exists ? recipientProfileDoc.data() : null;
+    const { data: recipientProfile } = await admin
+      .from('users')
+      .select('email, phone')
+      .eq('id', userId)
+      .single();
 
     const isRecipient =
       gift.recipient_id === userId ||
@@ -53,17 +62,27 @@ export async function POST(
 
     const status = payload.scheduledDate ? 'scheduled' : 'accepted';
 
-    // Update gift
-    const updateData: any = {
-      status,
-      accepted_at: Timestamp.now(),
-      scheduled_datetime: payload.scheduledDate ? Timestamp.fromDate(new Date(payload.scheduledDate)) : null,
-      recipient_id: gift.recipient_id || userId,
-      updated_at: Timestamp.now(),
-    };
+    const { data: updatedGift, error: updateErr } = await admin
+      .from('gifts')
+      .update({
+        status,
+        accepted_at: new Date().toISOString(),
+        scheduled_datetime: payload.scheduledDate ? new Date(payload.scheduledDate).toISOString() : null,
+        recipient_id: gift.recipient_id || userId,
+      })
+      .eq('id', giftId)
+      .select()
+      .single();
 
-    await adminDb.collection('gifts').doc(giftId).update(updateData);
-    const updatedGift = { ...gift, ...updateData };
+    if (updateErr || !updatedGift) {
+      throw updateErr || new Error('Update failed');
+    }
+
+    const { data: senderProfile } = await admin
+      .from('users')
+      .select('display_name, username, email')
+      .eq('id', updatedGift.sender_id)
+      .single();
 
     await notifyGiftAccepted({
       giftId,
@@ -71,7 +90,11 @@ export async function POST(
       recipientEmail: updatedGift.recipient_email,
       recipientPhone: updatedGift.recipient_phone,
       senderId: updatedGift.sender_id,
-      senderName: null,
+      senderName:
+        senderProfile?.display_name ||
+        senderProfile?.username ||
+        senderProfile?.email ||
+        null,
       message: updatedGift.message,
       scheduledDate: payload.scheduledDate || null,
     });
@@ -85,4 +108,3 @@ export async function POST(
     );
   }
 }
-

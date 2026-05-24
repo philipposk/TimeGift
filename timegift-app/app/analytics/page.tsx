@@ -4,8 +4,7 @@ import { useEffect, useState } from 'react';
 import { TrendingUp, Gift, Heart, Calendar, BarChart3 } from 'lucide-react';
 import Navbar from '@/components/navbar';
 import { getCurrentUser } from '@/utils/auth';
-import { db } from '@/lib/firebase';
-import { collection, query, where, orderBy, getDocs } from 'firebase/firestore';
+import { getSupabaseBrowserClient } from '@/lib/supabase';
 import Link from 'next/link';
 import {
   LineChart,
@@ -22,6 +21,12 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
+
+function toHours(gift: any): number {
+  if (gift.time_unit === 'hours') return gift.time_amount;
+  if (gift.time_unit === 'days') return gift.time_amount * 24;
+  return gift.time_amount / 60;
+}
 
 export default function AnalyticsPage() {
   const [user, setUser] = useState<any>(null);
@@ -41,82 +46,44 @@ export default function AnalyticsPage() {
 
         setUser(currentUser);
 
-        if (!db) {
-          setStats(null);
-          setLoading(false);
-          return;
-        }
-
-        // Get all gifts
-        const sentGiftsQuery = query(
-          collection(db, 'gifts'),
-          where('sender_id', '==', currentUser.id),
-          orderBy('created_at', 'desc')
-        );
-        const receivedGiftsQuery = query(
-          collection(db, 'gifts'),
-          where('recipient_id', '==', currentUser.id),
-          orderBy('created_at', 'desc')
-        );
-
-        const [sentSnapshot, receivedSnapshot] = await Promise.all([
-          getDocs(sentGiftsQuery),
-          getDocs(receivedGiftsQuery),
+        const supabase = getSupabaseBrowserClient();
+        const [{ data: sentGifts }, { data: receivedGifts }] = await Promise.all([
+          supabase.from('gifts').select('*').eq('sender_id', currentUser.id).order('created_at', { ascending: false }),
+          supabase.from('gifts').select('*').eq('recipient_id', currentUser.id).order('created_at', { ascending: false }),
         ]);
 
-        const sentGifts = sentSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        const receivedGifts = receivedSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        const allGifts = [...sentGifts, ...receivedGifts];
+        const sent = sentGifts || [];
+        const received = receivedGifts || [];
+        const allGifts = [...sent, ...received];
 
-        // Calculate statistics
-        const totalHoursGifted = sentGifts.reduce((sum, gift) => {
-          const hours = gift.time_unit === 'hours' ? gift.time_amount :
-                       gift.time_unit === 'days' ? gift.time_amount * 24 :
-                       gift.time_amount / 60;
-          return sum + hours;
-        }, 0);
+        const totalHoursGifted = sent.reduce((sum, g) => sum + toHours(g), 0);
+        const totalHoursReceived = received.reduce((sum, g) => sum + toHours(g), 0);
 
-        const totalHoursReceived = receivedGifts.reduce((sum, gift) => {
-          const hours = gift.time_unit === 'hours' ? gift.time_amount :
-                       gift.time_unit === 'days' ? gift.time_amount * 24 :
-                       gift.time_amount / 60;
-          return sum + hours;
-        }, 0);
-
-        // Monthly breakdown
         const monthlyData: Record<string, { sent: number; received: number }> = {};
-        allGifts.forEach(gift => {
-          const date = gift.created_at?.toDate ? gift.created_at.toDate() : new Date(gift.created_at);
+        allGifts.forEach((gift) => {
+          const date = new Date(gift.created_at);
           const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-          if (!monthlyData[monthKey]) {
-            monthlyData[monthKey] = { sent: 0, received: 0 };
-          }
-          const hours = gift.time_unit === 'hours' ? gift.time_amount :
-                       gift.time_unit === 'days' ? gift.time_amount * 24 :
-                       gift.time_amount / 60;
-          if (gift.sender_id === currentUser.id) {
-            monthlyData[monthKey].sent += hours;
-          } else {
-            monthlyData[monthKey].received += hours;
-          }
+          if (!monthlyData[monthKey]) monthlyData[monthKey] = { sent: 0, received: 0 };
+          const hours = toHours(gift);
+          if (gift.sender_id === currentUser.id) monthlyData[monthKey].sent += hours;
+          else monthlyData[monthKey].received += hours;
         });
 
         const monthlyChartData = Object.entries(monthlyData)
           .sort()
-          .slice(-12) // Last 12 months
+          .slice(-12)
           .map(([month, data]) => ({
             month: new Date(month + '-01').toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
             sent: Math.round(data.sent * 10) / 10,
             received: Math.round(data.received * 10) / 10,
           }));
 
-        // Status breakdown
         const statusCounts = {
-          pending: allGifts.filter(g => g.status === 'pending').length,
-          accepted: allGifts.filter(g => g.status === 'accepted').length,
-          scheduled: allGifts.filter(g => g.status === 'scheduled').length,
-          completed: allGifts.filter(g => g.status === 'completed').length,
-          expired: allGifts.filter(g => g.status === 'expired').length,
+          pending: allGifts.filter((g) => g.status === 'pending').length,
+          accepted: allGifts.filter((g) => g.status === 'accepted').length,
+          scheduled: allGifts.filter((g) => g.status === 'scheduled').length,
+          completed: allGifts.filter((g) => g.status === 'completed').length,
+          expired: allGifts.filter((g) => g.status === 'expired').length,
         };
 
         const statusChartData = [
@@ -125,11 +92,10 @@ export default function AnalyticsPage() {
           { name: 'Scheduled', value: statusCounts.scheduled, color: '#8b5cf6' },
           { name: 'Completed', value: statusCounts.completed, color: '#10b981' },
           { name: 'Expired', value: statusCounts.expired, color: '#ef4444' },
-        ].filter(item => item.value > 0);
+        ].filter((i) => i.value > 0);
 
-        // Recipients breakdown (top 5)
         const recipientCounts: Record<string, number> = {};
-        sentGifts.forEach(gift => {
+        sent.forEach((gift) => {
           const recipient = gift.recipient_email || gift.recipient_phone || 'Unknown';
           recipientCounts[recipient] = (recipientCounts[recipient] || 0) + 1;
         });
@@ -147,8 +113,8 @@ export default function AnalyticsPage() {
           monthlyChartData,
           statusChartData,
           topRecipients,
-          averageGiftHours: allGifts.length > 0 
-            ? Math.round((totalHoursGifted / sentGifts.length) * 10) / 10 
+          averageGiftHours: sent.length > 0
+            ? Math.round((totalHoursGifted / sent.length) * 10) / 10
             : 0,
         });
       } catch (error) {
@@ -218,9 +184,8 @@ export default function AnalyticsPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-blue-50 dark:from-gray-900 dark:via-purple-900/20 dark:to-blue-900/20">
       <Navbar user={userData} />
-      
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        {/* Header */}
         <div className="text-center mb-12">
           <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-pink-500 to-purple-600 rounded-full mb-6">
             <BarChart3 className="w-8 h-8 text-white" />
@@ -251,7 +216,6 @@ export default function AnalyticsPage() {
           </div>
         ) : (
           <>
-            {/* Key Metrics */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
               <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border-l-4 border-pink-500">
                 <div className="flex items-center justify-between">
@@ -294,9 +258,7 @@ export default function AnalyticsPage() {
               </div>
             </div>
 
-            {/* Charts */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-              {/* Monthly Trend */}
               <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6">
                 <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
                   Monthly Time Gifting Trend
@@ -320,7 +282,6 @@ export default function AnalyticsPage() {
                 )}
               </div>
 
-              {/* Status Distribution */}
               <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6">
                 <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
                   Gift Status Distribution
@@ -333,12 +294,12 @@ export default function AnalyticsPage() {
                         cx="50%"
                         cy="50%"
                         labelLine={false}
-                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                        label={({ name, percent }) => `${name} ${((percent || 0) * 100).toFixed(0)}%`}
                         outerRadius={80}
                         fill="#8884d8"
                         dataKey="value"
                       >
-                        {stats.statusChartData.map((entry, index) => (
+                        {stats.statusChartData.map((entry: any, index: number) => (
                           <Cell key={`cell-${index}`} fill={entry.color} />
                         ))}
                       </Pie>
@@ -353,7 +314,6 @@ export default function AnalyticsPage() {
               </div>
             </div>
 
-            {/* Top Recipients */}
             {stats.topRecipients.length > 0 && (
               <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 mb-8">
                 <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
@@ -371,7 +331,6 @@ export default function AnalyticsPage() {
               </div>
             )}
 
-            {/* Insights */}
             <div className="bg-gradient-to-r from-pink-500 to-purple-600 rounded-2xl shadow-xl p-8 text-white">
               <h3 className="text-2xl font-bold mb-4">Your Impact</h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -382,8 +341,8 @@ export default function AnalyticsPage() {
                 <div>
                   <p className="text-pink-100 mb-2">Completion Rate</p>
                   <p className="text-3xl font-bold">
-                    {stats.totalGifts > 0 
-                      ? Math.round((stats.completedGifts / stats.totalGifts) * 100) 
+                    {stats.totalGifts > 0
+                      ? Math.round((stats.completedGifts / stats.totalGifts) * 100)
                       : 0}%
                   </p>
                 </div>

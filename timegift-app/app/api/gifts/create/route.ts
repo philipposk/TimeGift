@@ -1,7 +1,10 @@
 import { NextResponse, NextRequest } from 'next/server';
-import { getServerUser, adminDb } from '@/lib/firebase-admin';
+import { createSupabaseServerClient } from '@/lib/supabase-server';
+import { getSupabaseServiceClient } from '@/lib/supabase';
 import { notifyGiftCreated } from '@/utils/notifications';
-import { Timestamp } from 'firebase-admin/firestore';
+
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 interface CreateGiftPayload {
   recipientType: 'email' | 'phone';
@@ -15,84 +18,81 @@ interface CreateGiftPayload {
   availabilityData?: any;
   expiryDate?: string | null;
   isRandomExchange?: boolean;
-  userId?: string; // Client sends this for now (will be replaced with token verification)
 }
 
 function minutesFromAmount(amount: number, unit: 'minutes' | 'hours' | 'days') {
-  if (unit === 'hours') {
-    return amount * 60;
-  }
-  if (unit === 'days') {
-    return amount * 60 * 24;
-  }
+  if (unit === 'hours') return amount * 60;
+  if (unit === 'days') return amount * 60 * 24;
   return amount;
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const payload = (await request.json()) as CreateGiftPayload;
-
-    if (!payload.message || !payload.timeAmount || !payload.timeUnit) {
-      return NextResponse.json(
-        { error: 'Missing required gift fields' },
-        { status: 400 }
-      );
-    }
-
-    // Get user - for now accept userId from payload, later use token verification
-    const user = await getServerUser(request) || (payload.userId ? { uid: payload.userId } : null);
-    
-    if (!user || !user.uid) {
+    const supabase = await createSupabaseServerClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const userId = user.uid;
+    const payload = (await request.json()) as CreateGiftPayload;
+
+    if (!payload.message || !payload.timeAmount || !payload.timeUnit) {
+      return NextResponse.json({ error: 'Missing required gift fields' }, { status: 400 });
+    }
+
+    const userId = user.id;
     const timeInMinutes = minutesFromAmount(payload.timeAmount, payload.timeUnit);
 
-    // Find recipient by email or phone
+    // Resolve recipient by email/phone (uses service client - need to look up any
+    // user, RLS would hide non-friends).
+    const admin = getSupabaseServiceClient();
     let recipientId: string | null = null;
     if (payload.recipientType === 'email' && payload.recipientEmail) {
-      const usersRef = adminDb.collection('users');
-      const querySnapshot = await usersRef.where('email', '==', payload.recipientEmail).limit(1).get();
-      if (!querySnapshot.empty) {
-        recipientId = querySnapshot.docs[0].id;
-      }
+      const { data } = await admin
+        .from('users')
+        .select('id')
+        .eq('email', payload.recipientEmail)
+        .maybeSingle();
+      recipientId = data?.id ?? null;
+    } else if (payload.recipientType === 'phone' && payload.recipientPhone) {
+      const { data } = await admin
+        .from('users')
+        .select('id')
+        .eq('phone', payload.recipientPhone)
+        .maybeSingle();
+      recipientId = data?.id ?? null;
     }
 
-    if (payload.recipientType === 'phone' && payload.recipientPhone) {
-      const usersRef = adminDb.collection('users');
-      const querySnapshot = await usersRef.where('phone', '==', payload.recipientPhone).limit(1).get();
-      if (!querySnapshot.empty) {
-        recipientId = querySnapshot.docs[0].id;
-      }
+    const { data: senderProfile } = await supabase
+      .from('users')
+      .select('display_name, username, email')
+      .eq('id', userId)
+      .single();
+
+    const { data: insertedGift, error: insertError } = await supabase
+      .from('gifts')
+      .insert({
+        sender_id: userId,
+        recipient_id: recipientId,
+        recipient_email: payload.recipientEmail || null,
+        recipient_phone: payload.recipientPhone || null,
+        message: payload.message,
+        time_amount: timeInMinutes,
+        original_time_amount: timeInMinutes,
+        time_unit: payload.timeUnit,
+        purpose_type: payload.purposeType,
+        purpose_details: payload.purposeDetails || null,
+        availability_data: payload.availabilityData || null,
+        expiry_date: payload.expiryDate ? new Date(payload.expiryDate).toISOString() : null,
+        status: 'pending',
+        is_random_exchange: payload.isRandomExchange ?? false,
+      })
+      .select()
+      .single();
+
+    if (insertError || !insertedGift) {
+      throw insertError || new Error('Insert failed');
     }
-
-    // Get sender profile
-    const senderDoc = await adminDb.collection('users').doc(userId).get();
-    const senderProfile = senderDoc.exists ? senderDoc.data() : null;
-
-    // Create gift document
-    const giftData = {
-      sender_id: userId,
-      recipient_id: recipientId,
-      recipient_email: payload.recipientEmail || null,
-      recipient_phone: payload.recipientPhone || null,
-      message: payload.message,
-      time_amount: timeInMinutes,
-      original_time_amount: timeInMinutes,
-      time_unit: payload.timeUnit,
-      purpose_type: payload.purposeType,
-      purpose_details: payload.purposeDetails || null,
-      availability_data: payload.availabilityData || null,
-      expiry_date: payload.expiryDate ? Timestamp.fromDate(new Date(payload.expiryDate)) : null,
-      status: 'pending',
-      is_random_exchange: payload.isRandomExchange ?? false,
-      created_at: Timestamp.now(),
-      updated_at: Timestamp.now(),
-    };
-
-    const giftRef = await adminDb.collection('gifts').add(giftData);
-    const insertedGift = { id: giftRef.id, ...giftData };
 
     await notifyGiftCreated({
       giftId: insertedGift.id,
@@ -103,7 +103,7 @@ export async function POST(request: NextRequest) {
       senderName:
         senderProfile?.display_name ||
         senderProfile?.username ||
-        user.email ||
+        senderProfile?.email ||
         'A friend',
       message: payload.message,
     });
@@ -117,4 +117,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-

@@ -1,0 +1,67 @@
+name: TimeGift Cron
+
+on:
+  schedule:
+    # Time decay: daily 03:00 UTC
+    - cron: '0 3 * * *'
+    # Random exchange match: every 15 minutes
+    - cron: '*/15 * * * *'
+    # Reminders: daily 09:00 UTC
+    - cron: '0 9 * * *'
+  workflow_dispatch:
+    inputs:
+      route:
+        description: 'Which cron route to hit (decay, random-exchange, send-reminders, all)'
+        required: false
+        default: 'all'
+
+jobs:
+  hit-cron-route:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Pick route by schedule
+        id: pick
+        run: |
+          MANUAL="${{ github.event.inputs.route }}"
+          if [ -n "$MANUAL" ] && [ "$MANUAL" != "all" ]; then
+            echo "route=$MANUAL" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          if [ "$MANUAL" = "all" ]; then
+            echo "route=all" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          case "${{ github.event.schedule }}" in
+            "0 3 * * *")   echo "route=decay" >> $GITHUB_OUTPUT ;;
+            "*/15 * * * *") echo "route=random-exchange" >> $GITHUB_OUTPUT ;;
+            "0 9 * * *")   echo "route=send-reminders" >> $GITHUB_OUTPUT ;;
+            *) echo "route=all" >> $GITHUB_OUTPUT ;;
+          esac
+
+      - name: Hit cron route(s)
+        env:
+          BASE_URL: ${{ secrets.APP_BASE_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          ROUTE: ${{ steps.pick.outputs.route }}
+        run: |
+          set -e
+          if [ -z "$BASE_URL" ] || [ -z "$CRON_SECRET" ]; then
+            echo "::error::APP_BASE_URL and CRON_SECRET repo secrets must be set"
+            exit 1
+          fi
+          call() {
+            local path="$1"
+            echo "Hitting $BASE_URL$path"
+            curl -fsS -X POST -H "Authorization: Bearer $CRON_SECRET" "$BASE_URL$path" | head -c 2000
+            echo
+          }
+          case "$ROUTE" in
+            decay)            call /api/decay ;;
+            random-exchange)  call /api/random-exchange ;;
+            send-reminders)   call /api/cron/send-reminders ;;
+            all)
+              call /api/decay
+              call /api/random-exchange
+              call /api/cron/send-reminders
+              ;;
+          esac

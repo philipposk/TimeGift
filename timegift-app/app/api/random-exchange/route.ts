@@ -1,98 +1,58 @@
 import { NextResponse } from 'next/server';
-import { adminDb } from '@/lib/firebase-admin';
-import { Timestamp } from 'firebase-admin/firestore';
+import { getSupabaseServiceClient } from '@/lib/supabase';
 
-// Match users for random time gift exchange
-export async function POST(_request: Request) {
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
+// Cron-triggered. Pairs unmatched random-exchange queue entries via the
+// match_random_exchange_pair() RPC (atomic per pair).
+// Auth: requires `Authorization: Bearer ${CRON_SECRET}` if CRON_SECRET is set.
+export async function GET(request: Request) {
+  return POST(request);
+}
+
+export async function POST(request: Request) {
   try {
-    // Get random exchange settings
-    const settingsDoc = await adminDb.collection('admin_settings').doc('random_exchange').get();
-    const exchangeConfig = settingsDoc.exists && settingsDoc.data()?.setting_value
-      ? settingsDoc.data()!.setting_value
-      : {
-          enabled: true,
-          match_similar_time: true
-        };
+    const authHeader = request.headers.get('authorization');
+    if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const admin = getSupabaseServiceClient();
+
+    const { data: settingsRow } = await admin
+      .from('admin_settings')
+      .select('setting_value')
+      .eq('setting_key', 'random_exchange')
+      .maybeSingle();
+
+    const exchangeConfig = (settingsRow?.setting_value as any) || {
+      enabled: true,
+      match_similar_time: true,
+    };
 
     if (!exchangeConfig.enabled) {
       return NextResponse.json({ message: 'Random exchange is disabled' });
     }
 
-    // Get all unmatched entries from the queue
-    const queueSnapshot = await adminDb
-      .collection('random_exchange_queue')
-      .where('matched', '==', false)
-      .orderBy('created_at', 'asc')
-      .get();
-
-    const queueEntries = queueSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
-    if (queueEntries.length < 2) {
-      return NextResponse.json({ 
-        message: 'Not enough users in queue for matching',
-        queueSize: queueEntries.length
-      });
-    }
-
     let matchedPairs = 0;
-
-    // Simple matching algorithm: pair users sequentially
-    // In a production system, you'd want more sophisticated matching logic
-    for (let i = 0; i < queueEntries.length - 1; i += 2) {
-      const user1 = queueEntries[i];
-      const user2 = queueEntries[i + 1];
-
-      // Create mutual gifts
-      await adminDb.collection('gifts').add({
-        sender_id: user1.user_id,
-        recipient_id: user2.user_id,
-        message: 'A random act of kindness - sharing my time with you! 🎁',
-        time_amount: user1.time_amount,
-        original_time_amount: user1.time_amount,
-        time_unit: user1.time_unit,
-        purpose_type: user1.purpose_type,
-        purpose_details: user1.purpose_details,
-        status: 'pending',
-        is_random_exchange: true,
-        created_at: Timestamp.now(),
-        updated_at: Timestamp.now(),
-      });
-
-      await adminDb.collection('gifts').add({
-        sender_id: user2.user_id,
-        recipient_id: user1.user_id,
-        message: 'A random act of kindness - sharing my time with you! 🎁',
-        time_amount: user2.time_amount,
-        original_time_amount: user2.time_amount,
-        time_unit: user2.time_unit,
-        purpose_type: user2.purpose_type,
-        purpose_details: user2.purpose_details,
-        status: 'pending',
-        is_random_exchange: true,
-        created_at: Timestamp.now(),
-        updated_at: Timestamp.now(),
-      });
-
-      // Mark queue entries as matched
-      await adminDb.collection('random_exchange_queue').doc(user1.id).update({
-        matched: true,
-        matched_with: user2.user_id,
-        updated_at: Timestamp.now(),
-      });
-
-      await adminDb.collection('random_exchange_queue').doc(user2.id).update({
-        matched: true,
-        matched_with: user1.user_id,
-        updated_at: Timestamp.now(),
-      });
-
+    // Drain queue one pair at a time. RPC returns empty when no pair available.
+    for (let i = 0; i < 100; i++) {
+      const { data, error } = await admin.rpc('match_random_exchange_pair');
+      if (error) throw error;
+      if (!data || data.length === 0) break;
       matchedPairs++;
     }
+
+    const { count: remaining } = await admin
+      .from('random_exchange_queue')
+      .select('*', { count: 'exact', head: true })
+      .eq('matched', false);
 
     return NextResponse.json({
       success: true,
       matchedPairs,
-      remainingInQueue: queueEntries.length % 2
+      remainingInQueue: remaining ?? 0,
     });
   } catch (error: any) {
     console.error('Random exchange error:', error);

@@ -1,4 +1,4 @@
-// Re-export Firebase auth functions
+// Re-export Supabase auth functions (client-side only)
 export {
   signIn,
   signUp,
@@ -8,4 +8,4 @@ export {
   getCurrentUser,
   getSession,
   type AuthUser,
-} from './auth-firebase';
+} from './auth-supabase';

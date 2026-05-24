@@ -4,8 +4,7 @@ import { useEffect, useState } from 'react';
 import { Camera, Heart, Calendar, MapPin, Sparkles, X, Share2 } from 'lucide-react';
 import Navbar from '@/components/navbar';
 import { getCurrentUser } from '@/utils/auth';
-import { db } from '@/lib/firebase';
-import { collection, query, where, orderBy, getDocs } from 'firebase/firestore';
+import { getSupabaseBrowserClient } from '@/lib/supabase';
 import Link from 'next/link';
 import ShareMemoryModal from '@/components/share-memory-modal';
 
@@ -16,7 +15,7 @@ interface Memory {
   photo_url?: string;
   story?: string;
   location?: string;
-  created_at: any;
+  created_at: string;
 }
 
 export default function MemoriesPage() {
@@ -39,59 +38,27 @@ export default function MemoriesPage() {
 
         setUser(currentUser);
 
-        if (!db) {
-          setMemories([]);
-          setLoading(false);
-          return;
-        }
+        const supabase = getSupabaseBrowserClient();
+        const { data: gifts } = await supabase
+          .from('gifts')
+          .select('*')
+          .eq('status', 'completed')
+          .or(`sender_id.eq.${currentUser.id},recipient_id.eq.${currentUser.id}`)
+          .order('completed_at', { ascending: false });
 
-        // Get completed gifts
-        const completedGiftsQuery = query(
-          collection(db, 'gifts'),
-          where('status', '==', 'completed'),
-          where('sender_id', '==', currentUser.id),
-          orderBy('completed_at', 'desc')
-        );
+        const memoriesList: Memory[] = (gifts || [])
+          .filter((g) => g.memory_photo_url || g.memory_story)
+          .map((g) => ({
+            id: g.id,
+            gift_id: g.id,
+            gift: g,
+            photo_url: g.memory_photo_url,
+            story: g.memory_story,
+            location: g.memory_location,
+            created_at: g.completed_at || g.created_at,
+          }));
 
-        const receivedGiftsQuery = query(
-          collection(db, 'gifts'),
-          where('status', '==', 'completed'),
-          where('recipient_id', '==', currentUser.id),
-          orderBy('completed_at', 'desc')
-        );
-
-        const [sentSnapshot, receivedSnapshot] = await Promise.all([
-          getDocs(completedGiftsQuery),
-          getDocs(receivedGiftsQuery),
-        ]);
-
-        const allGifts = [
-          ...sentSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), type: 'sent' })),
-          ...receivedSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), type: 'received' })),
-        ];
-
-        // Get memories for these gifts
-        const memoriesList: Memory[] = [];
-        for (const gift of allGifts) {
-          // Check if gift has memory data (stored in gift or separate collection)
-          if (gift.memory_photo_url || gift.memory_story) {
-            memoriesList.push({
-              id: gift.id,
-              gift_id: gift.id,
-              gift: gift,
-              photo_url: gift.memory_photo_url,
-              story: gift.memory_story,
-              location: gift.memory_location,
-              created_at: gift.completed_at || gift.created_at,
-            });
-          }
-        }
-
-        setMemories(memoriesList.sort((a, b) => {
-          const dateA = a.created_at?.toDate ? a.created_at.toDate() : new Date(a.created_at);
-          const dateB = b.created_at?.toDate ? b.created_at.toDate() : new Date(b.created_at);
-          return dateB.getTime() - dateA.getTime();
-        }));
+        setMemories(memoriesList);
       } catch (error) {
         console.error('Error loading memories:', error);
         setMemories([]);
@@ -159,9 +126,8 @@ export default function MemoriesPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-blue-50 dark:from-gray-900 dark:via-purple-900/20 dark:to-blue-900/20">
       <Navbar user={userData} />
-      
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        {/* Header */}
         <div className="text-center mb-12">
           <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-pink-500 to-purple-600 rounded-full mb-6">
             <Camera className="w-8 h-8 text-white" />
@@ -174,7 +140,6 @@ export default function MemoriesPage() {
           </p>
         </div>
 
-        {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 text-center">
             <Heart className="w-8 h-8 text-pink-500 mx-auto mb-2" />
@@ -184,20 +149,19 @@ export default function MemoriesPage() {
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 text-center">
             <Calendar className="w-8 h-8 text-purple-500 mx-auto mb-2" />
             <p className="text-3xl font-bold text-gray-900 dark:text-white">
-              {memories.filter(m => m.photo_url).length}
+              {memories.filter((m) => m.photo_url).length}
             </p>
             <p className="text-sm text-gray-600 dark:text-gray-400">With Photos</p>
           </div>
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 text-center">
             <Sparkles className="w-8 h-8 text-blue-500 mx-auto mb-2" />
             <p className="text-3xl font-bold text-gray-900 dark:text-white">
-              {memories.filter(m => m.story).length}
+              {memories.filter((m) => m.story).length}
             </p>
             <p className="text-sm text-gray-600 dark:text-gray-400">With Stories</p>
           </div>
         </div>
 
-        {/* Memories Grid */}
         {memories.length === 0 ? (
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-12 text-center">
             <Camera className="w-16 h-16 text-gray-400 mx-auto mb-4" />
@@ -217,10 +181,7 @@ export default function MemoriesPage() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {memories.map((memory) => {
-              const date = memory.created_at?.toDate 
-                ? memory.created_at.toDate() 
-                : new Date(memory.created_at);
-              
+              const date = new Date(memory.created_at);
               return (
                 <div
                   key={memory.id}
@@ -286,13 +247,12 @@ export default function MemoriesPage() {
         )}
       </div>
 
-      {/* Memory Detail Modal */}
       {selectedMemory && (
-        <div 
+        <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
           onClick={() => setSelectedMemory(null)}
         >
-          <div 
+          <div
             className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
@@ -315,11 +275,7 @@ export default function MemoriesPage() {
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center space-x-2 text-sm text-gray-500 dark:text-gray-400">
                   <Calendar className="w-4 h-4" />
-                  <span>
-                    {selectedMemory.created_at?.toDate 
-                      ? selectedMemory.created_at.toDate().toLocaleDateString()
-                      : new Date(selectedMemory.created_at).toLocaleDateString()}
-                  </span>
+                  <span>{new Date(selectedMemory.created_at).toLocaleDateString()}</span>
                   {selectedMemory.location && (
                     <>
                       <span>•</span>
@@ -360,7 +316,6 @@ export default function MemoriesPage() {
         </div>
       )}
 
-      {/* Share Memory Modal */}
       {memoryToShare && (
         <ShareMemoryModal
           memory={memoryToShare}
