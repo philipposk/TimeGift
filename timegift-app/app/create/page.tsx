@@ -7,6 +7,8 @@ import { TopNav } from '@/components/tg/nav';
 import { Icon } from '@/components/tg/icon';
 import { Stamp } from '@/components/tg/stamp';
 import { Steps } from '@/components/tg/steps';
+import { VoiceRecorder } from '@/components/tg/voice-recorder';
+import { getSupabaseBrowserClient } from '@/lib/supabase';
 
 type Unit = 'minutes' | 'hours' | 'days';
 type RecipientType = 'email' | 'phone';
@@ -21,6 +23,8 @@ interface Draft {
   purposeDetails: string;
   message: string;
   expiryType: 'none' | '1m' | '3m' | '1y';
+  voiceUrl: string | null;
+  voiceDurationSeconds: number | null;
 }
 
 const STEP_ITEMS = [
@@ -54,6 +58,8 @@ export default function CreatePage() {
     purposeDetails: '',
     message: '',
     expiryType: 'none',
+    voiceUrl: null,
+    voiceDurationSeconds: null,
   });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -97,6 +103,8 @@ export default function CreatePage() {
         purposeType: data.purposeType,
         purposeDetails: data.purposeType === 'specific' ? data.purposeDetails : null,
         expiryDate: expiryDateFor(data.expiryType),
+        voiceUrl: data.voiceUrl,
+        voiceDurationSeconds: data.voiceDurationSeconds,
       };
       const res = await fetch('/api/gifts/create', {
         method: 'POST',
@@ -172,7 +180,7 @@ export default function CreatePage() {
             <div className="stack gap-8">
               {step === 1 && <StepRecipient data={data} update={update} />}
               {step === 2 && <StepTime data={data} update={update} />}
-              {step === 3 && <StepMessage data={data} update={update} />}
+              {step === 3 && <StepMessage data={data} update={update} userId={user?.id || ''} />}
               {step === 4 && <StepReview data={data} setStep={setStep} update={update} />}
 
               {error && (
@@ -432,7 +440,7 @@ function PurposeOpt({
   );
 }
 
-function StepMessage({ data, update }: { data: Draft; update: (p: Partial<Draft>) => void }) {
+function StepMessage({ data, update, userId }: { data: Draft; update: (p: Partial<Draft>) => void; userId: string }) {
   const templates = [
     'I’ve been meaning to tell you — ',
     'For your birthday — ',
@@ -502,6 +510,31 @@ function StepMessage({ data, update }: { data: Draft; update: (p: Partial<Draft>
             <Icon name="spark" size={12} /> Help me write it
           </button>
         </div>
+      </div>
+
+      <div className="field">
+        <label className="field-label">Voice memo (optional)</label>
+        <VoiceRecorder
+          onRecorded={async (blob, duration) => {
+            if (!blob || blob.size === 0) {
+              update({ voiceUrl: null, voiceDurationSeconds: null });
+              return;
+            }
+            const supabase = getSupabaseBrowserClient();
+            const path = `${userId}/${Date.now()}.webm`;
+            const { error: upErr } = await supabase.storage.from('voice').upload(path, blob, {
+              contentType: blob.type,
+              upsert: false,
+            });
+            if (upErr) {
+              console.error(upErr);
+              return;
+            }
+            const { data: pub } = supabase.storage.from('voice').getPublicUrl(path);
+            update({ voiceUrl: pub.publicUrl, voiceDurationSeconds: duration });
+          }}
+        />
+        <span className="meta">Recipients hear your voice on the letter. Up to 90 seconds.</span>
       </div>
     </div>
   );

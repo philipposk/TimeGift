@@ -109,7 +109,8 @@ export async function POST(request: NextRequest) {
 
 interface PatchPayload {
   friendshipId: string;
-  action: 'accept' | 'reject' | 'block';
+  action: 'accept' | 'reject' | 'block' | 'set-cadence';
+  cadenceDays?: number | null;
 }
 
 // PATCH: respond to a friend request (accept/reject) or block.
@@ -119,7 +120,7 @@ export async function PATCH(request: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const payload = (await request.json()) as PatchPayload;
-  if (!payload?.friendshipId || !['accept', 'reject', 'block'].includes(payload.action)) {
+  if (!payload?.friendshipId || !['accept', 'reject', 'block', 'set-cadence'].includes(payload.action)) {
     return NextResponse.json({ error: 'friendshipId + action required' }, { status: 400 });
   }
 
@@ -152,8 +153,7 @@ export async function PATCH(request: NextRequest) {
     } else {
       await admin.from('friendships').delete().eq('id', row.id);
     }
-  } else {
-    // block
+  } else if (payload.action === 'block') {
     if (row.user_id !== user.id && row.friend_id !== user.id) {
       return NextResponse.json({ error: 'Not your friendship' }, { status: 403 });
     }
@@ -165,6 +165,18 @@ export async function PATCH(request: NextRequest) {
         { blocker_id: user.id, blocked_user_id: other, reason: 'friendship-blocked' },
         { onConflict: 'blocker_id,blocked_user_id', ignoreDuplicates: true }
       );
+  } else if (payload.action === 'set-cadence') {
+    if (row.user_id !== user.id && row.friend_id !== user.id) {
+      return NextResponse.json({ error: 'Not your friendship' }, { status: 403 });
+    }
+    const v = payload.cadenceDays;
+    if (v !== null && (typeof v !== 'number' || v < 1 || v > 3650)) {
+      return NextResponse.json({ error: 'cadenceDays must be null or 1-3650' }, { status: 400 });
+    }
+    await admin
+      .from('friendships')
+      .update({ cadence_days: v ?? null, cadence_warned_at: null })
+      .eq('id', row.id);
   }
 
   return NextResponse.json({ success: true });

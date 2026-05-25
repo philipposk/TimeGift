@@ -32,7 +32,7 @@ export async function GET(
 
   const { data: gift } = await admin
     .from('gifts')
-    .select('id, message, time_amount, time_unit, purpose_type, purpose_details, sender_id, status')
+    .select('id, message, time_amount, time_unit, purpose_type, purpose_details, sender_id, status, voice_url, voice_duration_seconds')
     .eq('id', row.gift_id)
     .single();
   if (!gift) return NextResponse.json({ error: 'Gift no longer exists' }, { status: 404 });
@@ -52,6 +52,8 @@ export async function GET(
       purposeType: gift.purpose_type,
       purposeDetails: gift.purpose_details,
       status: gift.status,
+      voiceUrl: gift.voice_url,
+      voiceDurationSeconds: gift.voice_duration_seconds,
       sender: {
         displayName: sender?.display_name || sender?.username || 'Someone',
         avatarUrl: sender?.avatar_url || null,

@@ -181,6 +181,8 @@ export default function GiftDetailPage() {
             senderName={senderName}
             senderAvatarUrl={sender?.avatar_url}
             sentAt={gift.created_at}
+            voiceUrl={(gift as any).voice_url}
+            voiceDurationSeconds={(gift as any).voice_duration_seconds}
           />
 
           {gift.scheduled_datetime && (

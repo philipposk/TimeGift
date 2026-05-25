@@ -2,6 +2,7 @@
 
 import { Stamp } from './stamp';
 import { Avatar } from './avatar';
+import { VoicePlayer } from './voice-player';
 import { formatDuration } from '@/lib/time-format';
 
 interface LetterViewProps {
@@ -14,6 +15,8 @@ interface LetterViewProps {
   senderAvatarUrl?: string | null;
   senderInitial?: string;
   sentAt?: string | null;
+  voiceUrl?: string | null;
+  voiceDurationSeconds?: number | null;
   rightColumn?: React.ReactNode;
 }
 
@@ -27,6 +30,8 @@ export function LetterView({
   senderAvatarUrl,
   senderInitial,
   sentAt,
+  voiceUrl,
+  voiceDurationSeconds,
   rightColumn,
 }: LetterViewProps) {
   const initial = senderInitial || (senderName || '?').charAt(0).toUpperCase();
@@ -76,6 +81,13 @@ export function LetterView({
       <p className="handwritten" style={{ textAlign: 'right', color: 'var(--accent)' }}>
         — {(senderName || '').split(' ')[0] || initial}.
       </p>
+
+      {voiceUrl && (
+        <div style={{ marginTop: 24 }}>
+          <div className="eyebrow mb-2">In their voice</div>
+          <VoicePlayer url={voiceUrl} durationSeconds={voiceDurationSeconds} />
+        </div>
+      )}
 
       {rightColumn}
     </div>

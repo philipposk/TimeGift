@@ -17,6 +17,8 @@ interface ClaimData {
     purposeType: string;
     purposeDetails?: string | null;
     status: string;
+    voiceUrl?: string | null;
+    voiceDurationSeconds?: number | null;
     sender: { displayName: string; avatarUrl: string | null };
   };
   recipient: { email: string | null; phone: string | null };
@@ -129,6 +131,8 @@ export default function ClaimPage() {
             message={g.message}
             senderName={g.sender.displayName}
             senderAvatarUrl={g.sender.avatarUrl}
+            voiceUrl={g.voiceUrl}
+            voiceDurationSeconds={g.voiceDurationSeconds}
           />
 
           {error && (

@@ -10,10 +10,16 @@ on:
     - cron: '0 9 * * *'
     # Auto-complete scheduled gifts 24h past: every 6 hours
     - cron: '0 */6 * * *'
+    # Cadence reminders: daily 10:00 UTC
+    - cron: '0 10 * * *'
+    # On-this-day memory surfacing: daily 08:00 UTC
+    - cron: '0 8 * * *'
+    # Legacy letters: daily 07:00 UTC
+    - cron: '0 7 * * *'
   workflow_dispatch:
     inputs:
       route:
-        description: 'Which cron route to hit (decay, random-exchange, send-reminders, auto-complete, all)'
+        description: 'Which cron route to hit (decay, random-exchange, send-reminders, auto-complete, cadence, on-this-day, legacy, all)'
         required: false
         default: 'all'
 
@@ -38,6 +44,9 @@ jobs:
             "*/15 * * * *") echo "route=random-exchange" >> $GITHUB_OUTPUT ;;
             "0 9 * * *")    echo "route=send-reminders" >> $GITHUB_OUTPUT ;;
             "0 */6 * * *")  echo "route=auto-complete" >> $GITHUB_OUTPUT ;;
+            "0 10 * * *")   echo "route=cadence" >> $GITHUB_OUTPUT ;;
+            "0 8 * * *")    echo "route=on-this-day" >> $GITHUB_OUTPUT ;;
+            "0 7 * * *")    echo "route=legacy" >> $GITHUB_OUTPUT ;;
             *) echo "route=all" >> $GITHUB_OUTPUT ;;
           esac
 
@@ -63,10 +72,16 @@ jobs:
             random-exchange)  call /api/random-exchange ;;
             send-reminders)   call /api/cron/send-reminders ;;
             auto-complete)    call /api/cron/auto-complete ;;
+            cadence)          call /api/cron/cadence ;;
+            on-this-day)      call /api/cron/on-this-day ;;
+            legacy)           call /api/cron/legacy ;;
             all)
               call /api/decay
               call /api/random-exchange
               call /api/cron/send-reminders
               call /api/cron/auto-complete
+              call /api/cron/cadence
+              call /api/cron/on-this-day
+              call /api/cron/legacy
               ;;
           esac

@@ -25,6 +25,7 @@ export default function ProfilePage() {
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [reliability, setReliability] = useState<{ percent: number | null; completed: number; broken: number } | null>(null);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -40,6 +41,19 @@ export default function ProfilePage() {
       const supabase = getSupabaseBrowserClient();
       const { data } = await supabase.from('users').select('*').eq('id', me.id).single();
       setProfile(data);
+      try {
+        const r = await fetch(`/api/reliability/${me.id}`);
+        if (r.ok) {
+          const j = await r.json();
+          setReliability({
+            percent: j.reliability?.reliability_percent ?? null,
+            completed: j.reliability?.completed_count ?? 0,
+            broken: j.reliability?.broken_count ?? 0,
+          });
+        }
+      } catch {
+        // ignore
+      }
     }
     load();
   }, [router]);
@@ -98,6 +112,22 @@ export default function ProfilePage() {
             <div>
               <div className="serif" style={{ fontSize: 22 }}>{profile.display_name || profile.username}</div>
               <div className="meta">@{profile.username}</div>
+              {reliability && reliability.percent !== null && (
+                <div className="meta mt-2">
+                  <span
+                    className="tag"
+                    style={{
+                      background: 'var(--moss-soft)',
+                      borderColor: 'var(--moss-soft)',
+                      color: '#2d4a25',
+                      fontSize: 10,
+                    }}
+                  >
+                    <span className="tag-dot" style={{ background: 'var(--moss)' }} />
+                    Showed up {reliability.percent}% — {reliability.completed} kept, {reliability.broken} not
+                  </span>
+                </div>
+              )}
             </div>
           </div>
 

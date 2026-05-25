@@ -5,6 +5,7 @@ import { getSupabaseServiceClient } from '@/lib/supabase';
 import { notifyGiftCreated } from '@/utils/notifications';
 import { canReceiveGift, isBlocked } from '@/lib/access';
 import { checkAndRecordRateLimit } from '@/lib/rate-limit';
+import { moderateText } from '@/lib/moderation';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -22,6 +23,9 @@ interface CreateGiftPayload {
   expiryDate?: string | null;
   isRandomExchange?: boolean;
   decayEnabled?: boolean;
+  voiceUrl?: string | null;
+  voiceDurationSeconds?: number | null;
+  legacyVisibleAt?: string | null;
 }
 
 function minutesFromAmount(amount: number, unit: 'minutes' | 'hours' | 'days') {
@@ -109,6 +113,9 @@ export async function POST(request: NextRequest) {
 
     const timeInMinutes = minutesFromAmount(payload.timeAmount, payload.timeUnit);
 
+    // Soft moderation: flag for admin review but don't hard-reject.
+    const mod = moderateText(`${payload.message} ${payload.purposeDetails || ''}`);
+
     const { data: senderProfile } = await supabase
       .from('users')
       .select('display_name, username, email')
@@ -133,12 +140,28 @@ export async function POST(request: NextRequest) {
         status: 'pending',
         is_random_exchange: payload.isRandomExchange ?? false,
         decay_enabled: payload.decayEnabled ?? true,
+        voice_url: payload.voiceUrl || null,
+        voice_duration_seconds: payload.voiceDurationSeconds || null,
+        legacy_visible_at: payload.legacyVisibleAt ? new Date(payload.legacyVisibleAt).toISOString() : null,
+        flagged_for_review: mod.flagged,
+        flag_reason: mod.reason || null,
       })
       .select()
       .single();
 
     if (insertError || !insertedGift) {
       throw insertError || new Error('Insert failed');
+    }
+
+    // Bump cadence "last_gift_at" on any friendships between sender and recipient.
+    if (recipientId) {
+      await admin
+        .from('friendships')
+        .update({ last_gift_at: new Date().toISOString(), cadence_warned_at: null })
+        .or(
+          `and(user_id.eq.${user.id},friend_id.eq.${recipientId}),and(user_id.eq.${recipientId},friend_id.eq.${user.id})`
+        )
+        .eq('status', 'accepted');
     }
 
     // Issue a claim token for non-user recipients (30-day expiry).
@@ -171,6 +194,11 @@ export async function POST(request: NextRequest) {
         'A friend',
       message: payload.message,
       claimUrl,
+      amountMinutes: timeInMinutes,
+      purpose:
+        payload.purposeType === 'specific' && payload.purposeDetails
+          ? payload.purposeDetails
+          : 'anything you want',
     });
 
     return NextResponse.json({ success: true, gift: insertedGift, claimUrl });

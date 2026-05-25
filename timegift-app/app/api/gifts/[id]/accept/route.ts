@@ -84,11 +84,21 @@ export async function POST(
       .eq('id', updatedGift.sender_id)
       .single();
 
+    const { data: recipientProfileForNotify } = await admin
+      .from('users')
+      .select('display_name, username, email')
+      .eq('id', updatedGift.recipient_id)
+      .maybeSingle();
+
     await notifyGiftAccepted({
       giftId,
       recipientId: updatedGift.recipient_id,
-      recipientEmail: updatedGift.recipient_email,
+      recipientEmail: updatedGift.recipient_email || recipientProfileForNotify?.email || null,
       recipientPhone: updatedGift.recipient_phone,
+      recipientName:
+        recipientProfileForNotify?.display_name ||
+        recipientProfileForNotify?.username ||
+        null,
       senderId: updatedGift.sender_id,
       senderName:
         senderProfile?.display_name ||
@@ -96,6 +106,7 @@ export async function POST(
         senderProfile?.email ||
         null,
       message: updatedGift.message,
+      amountMinutes: updatedGift.time_amount,
       scheduledDate: payload.scheduledDate || null,
     });
 
