@@ -1,362 +1,229 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { TrendingUp, Gift, Heart, Calendar, BarChart3 } from 'lucide-react';
-import Navbar from '@/components/navbar';
+import { useRouter } from 'next/navigation';
 import { getCurrentUser } from '@/utils/auth';
 import { getSupabaseBrowserClient } from '@/lib/supabase';
-import Link from 'next/link';
+import { TopNav } from '@/components/tg/nav';
+import { Footer } from '@/components/tg/footer';
+import { toDisplayHours } from '@/lib/time-format';
 import {
-  LineChart,
-  Line,
-  BarChart,
-  Bar,
-  PieChart,
-  Pie,
-  Cell,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
+  LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
+  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from 'recharts';
 
-function toHours(gift: any): number {
-  if (gift.time_unit === 'hours') return gift.time_amount;
-  if (gift.time_unit === 'days') return gift.time_amount * 24;
-  return gift.time_amount / 60;
+interface Gift {
+  id: string;
+  sender_id: string;
+  recipient_id: string | null;
+  recipient_email: string | null;
+  recipient_phone: string | null;
+  time_amount: number;
+  status: string;
+  created_at: string;
 }
 
 export default function AnalyticsPage() {
+  const router = useRouter();
   const [user, setUser] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<any>(null);
 
   useEffect(() => {
-    async function loadData() {
-      try {
-        const currentUser = await getCurrentUser();
-        if (!currentUser) {
-          setUser(null);
-          setStats(null);
-          setLoading(false);
-          return;
-        }
-
-        setUser(currentUser);
-
-        const supabase = getSupabaseBrowserClient();
-        const [{ data: sentGifts }, { data: receivedGifts }] = await Promise.all([
-          supabase.from('gifts').select('*').eq('sender_id', currentUser.id).order('created_at', { ascending: false }),
-          supabase.from('gifts').select('*').eq('recipient_id', currentUser.id).order('created_at', { ascending: false }),
-        ]);
-
-        const sent = sentGifts || [];
-        const received = receivedGifts || [];
-        const allGifts = [...sent, ...received];
-
-        const totalHoursGifted = sent.reduce((sum, g) => sum + toHours(g), 0);
-        const totalHoursReceived = received.reduce((sum, g) => sum + toHours(g), 0);
-
-        const monthlyData: Record<string, { sent: number; received: number }> = {};
-        allGifts.forEach((gift) => {
-          const date = new Date(gift.created_at);
-          const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-          if (!monthlyData[monthKey]) monthlyData[monthKey] = { sent: 0, received: 0 };
-          const hours = toHours(gift);
-          if (gift.sender_id === currentUser.id) monthlyData[monthKey].sent += hours;
-          else monthlyData[monthKey].received += hours;
-        });
-
-        const monthlyChartData = Object.entries(monthlyData)
-          .sort()
-          .slice(-12)
-          .map(([month, data]) => ({
-            month: new Date(month + '-01').toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
-            sent: Math.round(data.sent * 10) / 10,
-            received: Math.round(data.received * 10) / 10,
-          }));
-
-        const statusCounts = {
-          pending: allGifts.filter((g) => g.status === 'pending').length,
-          accepted: allGifts.filter((g) => g.status === 'accepted').length,
-          scheduled: allGifts.filter((g) => g.status === 'scheduled').length,
-          completed: allGifts.filter((g) => g.status === 'completed').length,
-          expired: allGifts.filter((g) => g.status === 'expired').length,
-        };
-
-        const statusChartData = [
-          { name: 'Pending', value: statusCounts.pending, color: '#fbbf24' },
-          { name: 'Accepted', value: statusCounts.accepted, color: '#3b82f6' },
-          { name: 'Scheduled', value: statusCounts.scheduled, color: '#8b5cf6' },
-          { name: 'Completed', value: statusCounts.completed, color: '#10b981' },
-          { name: 'Expired', value: statusCounts.expired, color: '#ef4444' },
-        ].filter((i) => i.value > 0);
-
-        const recipientCounts: Record<string, number> = {};
-        sent.forEach((gift) => {
-          const recipient = gift.recipient_email || gift.recipient_phone || 'Unknown';
-          recipientCounts[recipient] = (recipientCounts[recipient] || 0) + 1;
-        });
-
-        const topRecipients = Object.entries(recipientCounts)
-          .sort(([, a], [, b]) => b - a)
-          .slice(0, 5)
-          .map(([name, count]) => ({ name: name.substring(0, 20), count }));
-
-        setStats({
-          totalHoursGifted: Math.round(totalHoursGifted * 10) / 10,
-          totalHoursReceived: Math.round(totalHoursReceived * 10) / 10,
-          totalGifts: allGifts.length,
-          completedGifts: statusCounts.completed,
-          monthlyChartData,
-          statusChartData,
-          topRecipients,
-          averageGiftHours: sent.length > 0
-            ? Math.round((totalHoursGifted / sent.length) * 10) / 10
-            : 0,
-        });
-      } catch (error) {
-        console.error('Error loading analytics:', error);
-        setStats(null);
-      } finally {
-        setLoading(false);
+    async function load() {
+      const me = await getCurrentUser();
+      if (!me) {
+        router.push('/auth/signin?next=/analytics');
+        return;
       }
+      setUser(me);
+      const supabase = getSupabaseBrowserClient();
+      const [{ data: sent }, { data: received }] = await Promise.all([
+        supabase.from('gifts').select('*').eq('sender_id', me.id).order('created_at', { ascending: false }),
+        supabase.from('gifts').select('*').eq('recipient_id', me.id).order('created_at', { ascending: false }),
+      ]);
+      setStats(computeStats(me.id, sent || [], received || []));
     }
+    load();
+  }, [router]);
 
-    loadData();
-  }, []);
-
-  if (loading) {
+  if (!user || !stats) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-blue-50 dark:from-gray-900 dark:via-purple-900/20 dark:to-blue-900/20 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-500 mx-auto mb-4"></div>
-          <p className="text-gray-600 dark:text-gray-400">Loading analytics...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!user) {
-    const userData = null;
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-blue-50 dark:from-gray-900 dark:via-purple-900/20 dark:to-blue-900/20">
-        <Navbar user={userData} />
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-12 text-center">
-            <BarChart3 className="w-20 h-20 text-pink-500 mx-auto mb-6" />
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
-              Time Impact Analytics
-            </h1>
-            <p className="text-xl text-gray-600 dark:text-gray-400 mb-8">
-              Sign in to see beautiful analytics and insights about your time gifting journey!
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link
-                href="/auth/signup"
-                className="px-8 py-4 text-lg font-semibold text-white bg-gradient-to-r from-pink-500 to-purple-600 rounded-full hover:from-pink-600 hover:to-purple-700 transform hover:scale-105 transition-all shadow-lg"
-              >
-                Get Started for Free
-              </Link>
-              <Link
-                href="/auth/signin"
-                className="px-8 py-4 text-lg font-semibold text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 rounded-full hover:bg-gray-50 dark:hover:bg-gray-600 transition-all shadow-md"
-              >
-                Sign In
-              </Link>
-            </div>
+      <>
+        <TopNav />
+        <main>
+          <div className="container" style={{ paddingTop: 80 }}>
+            <div className="serif italic muted center" style={{ fontSize: 22 }}>Loading…</div>
           </div>
-        </div>
-      </div>
+        </main>
+      </>
     );
   }
-
-  const userData = {
-    id: user.id,
-    username: user.username,
-    displayName: user.displayName,
-    avatarUrl: user.avatarUrl,
-    isAdmin: user.isAdmin,
-  };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-blue-50 dark:from-gray-900 dark:via-purple-900/20 dark:to-blue-900/20">
-      <Navbar user={userData} />
-
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="text-center mb-12">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-pink-500 to-purple-600 rounded-full mb-6">
-            <BarChart3 className="w-8 h-8 text-white" />
+    <>
+      <TopNav />
+      <main>
+        <div className="container" style={{ paddingTop: 24, paddingBottom: 80 }}>
+          <div className="stack gap-2 mb-8">
+            <div className="eyebrow">A quiet ledger</div>
+            <h1 style={{ fontSize: 48, letterSpacing: '-0.025em', lineHeight: 1 }}>
+              <em style={{ color: 'var(--accent)' }}>Time</em> you gave, time you got.
+            </h1>
           </div>
-          <h1 className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-4">
-            Time Impact Analytics
-          </h1>
-          <p className="text-xl text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
-            Visual insights into your time gifting journey. See your impact, track trends, and celebrate your generosity.
-          </p>
-        </div>
 
-        {!stats ? (
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-12 text-center">
-            <BarChart3 className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-              No Data Yet
-            </h2>
-            <p className="text-gray-600 dark:text-gray-400 mb-6">
-              Create and complete time gifts to see your analytics!
-            </p>
-            <Link
-              href="/dashboard"
-              className="inline-block px-6 py-3 bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white font-semibold rounded-lg transition-all"
-            >
-              Go to Dashboard
-            </Link>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(4, 1fr)',
+              gap: 1,
+              background: 'var(--hairline-soft)',
+              border: '1px solid var(--hairline-soft)',
+              borderRadius: 6,
+              overflow: 'hidden',
+              marginBottom: 48,
+            }}
+          >
+            <Stat label="Hours given" num={stats.totalHoursGifted} />
+            <Stat label="Hours received" num={stats.totalHoursReceived} />
+            <Stat label="Total gifts" num={stats.totalGifts} />
+            <Stat label="Completed" num={stats.completedGifts} accent />
           </div>
-        ) : (
-          <>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border-l-4 border-pink-500">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Total Hours Gifted</p>
-                    <p className="text-3xl font-bold text-gray-900 dark:text-white">{stats.totalHoursGifted}</p>
-                  </div>
-                  <Gift className="w-12 h-12 text-pink-500 opacity-20" />
-                </div>
-              </div>
 
-              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border-l-4 border-purple-500">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Total Hours Received</p>
-                    <p className="text-3xl font-bold text-gray-900 dark:text-white">{stats.totalHoursReceived}</p>
-                  </div>
-                  <Heart className="w-12 h-12 text-purple-500 opacity-20" />
-                </div>
-              </div>
-
-              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border-l-4 border-blue-500">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Total Gifts</p>
-                    <p className="text-3xl font-bold text-gray-900 dark:text-white">{stats.totalGifts}</p>
-                  </div>
-                  <Calendar className="w-12 h-12 text-blue-500 opacity-20" />
-                </div>
-              </div>
-
-              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border-l-4 border-green-500">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Completed</p>
-                    <p className="text-3xl font-bold text-gray-900 dark:text-white">{stats.completedGifts}</p>
-                  </div>
-                  <TrendingUp className="w-12 h-12 text-green-500 opacity-20" />
-                </div>
-              </div>
+          {stats.totalGifts === 0 ? (
+            <div className="card center" style={{ padding: '64px 32px' }}>
+              <div className="serif italic muted" style={{ fontSize: 22 }}>No data yet.</div>
+              <div className="meta mt-2">Write a few gifts and come back.</div>
             </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6">
-                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
-                  Monthly Time Gifting Trend
-                </h3>
-                {stats.monthlyChartData.length > 0 ? (
-                  <ResponsiveContainer width="100%" height={300}>
+          ) : (
+            <>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 32, marginBottom: 32 }}>
+                <Card title="Monthly trend">
+                  <ResponsiveContainer width="100%" height={280}>
                     <LineChart data={stats.monthlyChartData}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="month" />
-                      <YAxis />
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--hairline-soft)" />
+                      <XAxis dataKey="month" stroke="var(--muted)" />
+                      <YAxis stroke="var(--muted)" />
                       <Tooltip />
                       <Legend />
-                      <Line type="monotone" dataKey="sent" stroke="#ec4899" strokeWidth={2} name="Hours Gifted" />
-                      <Line type="monotone" dataKey="received" stroke="#8b5cf6" strokeWidth={2} name="Hours Received" />
+                      <Line type="monotone" dataKey="sent" stroke="var(--accent)" strokeWidth={2} name="Given" />
+                      <Line type="monotone" dataKey="received" stroke="var(--moss)" strokeWidth={2} name="Received" />
                     </LineChart>
                   </ResponsiveContainer>
-                ) : (
-                  <div className="h-300 flex items-center justify-center text-gray-400">
-                    <p>No data available yet</p>
-                  </div>
-                )}
-              </div>
+                </Card>
 
-              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6">
-                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
-                  Gift Status Distribution
-                </h3>
-                {stats.statusChartData.length > 0 ? (
-                  <ResponsiveContainer width="100%" height={300}>
+                <Card title="Status">
+                  <ResponsiveContainer width="100%" height={280}>
                     <PieChart>
                       <Pie
                         data={stats.statusChartData}
-                        cx="50%"
-                        cy="50%"
-                        labelLine={false}
-                        label={({ name, percent }) => `${name} ${((percent || 0) * 100).toFixed(0)}%`}
-                        outerRadius={80}
-                        fill="#8884d8"
-                        dataKey="value"
+                        cx="50%" cy="50%" outerRadius={90} dataKey="value"
+                        label={({ name, percent }: any) => `${name} ${((percent || 0) * 100).toFixed(0)}%`}
                       >
-                        {stats.statusChartData.map((entry: any, index: number) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        {stats.statusChartData.map((entry: any, i: number) => (
+                          <Cell key={i} fill={entry.color} />
                         ))}
                       </Pie>
                       <Tooltip />
                     </PieChart>
                   </ResponsiveContainer>
-                ) : (
-                  <div className="h-300 flex items-center justify-center text-gray-400">
-                    <p>No data available yet</p>
-                  </div>
-                )}
+                </Card>
               </div>
-            </div>
 
-            {stats.topRecipients.length > 0 && (
-              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 mb-8">
-                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
-                  Top Recipients
-                </h3>
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={stats.topRecipients}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" />
-                    <YAxis />
-                    <Tooltip />
-                    <Bar dataKey="count" fill="#ec4899" name="Gifts Sent" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            )}
+              {stats.topRecipients.length > 0 && (
+                <Card title="Top recipients">
+                  <ResponsiveContainer width="100%" height={280}>
+                    <BarChart data={stats.topRecipients}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--hairline-soft)" />
+                      <XAxis dataKey="name" stroke="var(--muted)" />
+                      <YAxis stroke="var(--muted)" />
+                      <Tooltip />
+                      <Bar dataKey="count" fill="var(--accent)" name="Gifts sent" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </Card>
+              )}
+            </>
+          )}
+        </div>
+        <Footer />
+      </main>
+    </>
+  );
+}
 
-            <div className="bg-gradient-to-r from-pink-500 to-purple-600 rounded-2xl shadow-xl p-8 text-white">
-              <h3 className="text-2xl font-bold mb-4">Your Impact</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div>
-                  <p className="text-pink-100 mb-2">Average Gift Size</p>
-                  <p className="text-3xl font-bold">{stats.averageGiftHours} hours</p>
-                </div>
-                <div>
-                  <p className="text-pink-100 mb-2">Completion Rate</p>
-                  <p className="text-3xl font-bold">
-                    {stats.totalGifts > 0
-                      ? Math.round((stats.completedGifts / stats.totalGifts) * 100)
-                      : 0}%
-                  </p>
-                </div>
-                <div>
-                  <p className="text-pink-100 mb-2">Net Time Impact</p>
-                  <p className="text-3xl font-bold">
-                    {Math.round((stats.totalHoursGifted - stats.totalHoursReceived) * 10) / 10} hours
-                  </p>
-                </div>
-              </div>
-            </div>
-          </>
-        )}
-      </div>
+function Stat({ label, num, accent }: { label: string; num: number; accent?: boolean }) {
+  return (
+    <div style={{ background: 'var(--paper)', padding: '28px 28px 24px' }}>
+      <div className="stat-label" style={{ marginBottom: 14 }}>{label}</div>
+      <div className="stat-num" style={{ color: accent ? 'var(--accent)' : 'var(--ink)' }}>{num}</div>
     </div>
   );
+}
+
+function Card({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="card">
+      <div className="eyebrow mb-4">{title}</div>
+      {children}
+    </div>
+  );
+}
+
+function computeStats(myId: string, sent: Gift[], received: Gift[]) {
+  const allGifts = [...sent, ...received];
+  const totalHoursGifted = toDisplayHours(sent.reduce((s, g) => s + g.time_amount, 0));
+  const totalHoursReceived = toDisplayHours(received.reduce((s, g) => s + g.time_amount, 0));
+
+  const monthlyData: Record<string, { sent: number; received: number }> = {};
+  for (const g of allGifts) {
+    const d = new Date(g.created_at);
+    const k = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    if (!monthlyData[k]) monthlyData[k] = { sent: 0, received: 0 };
+    const hrs = g.time_amount / 60;
+    if (g.sender_id === myId) monthlyData[k].sent += hrs;
+    else monthlyData[k].received += hrs;
+  }
+  const monthlyChartData = Object.entries(monthlyData)
+    .sort()
+    .slice(-12)
+    .map(([k, v]) => ({
+      month: new Date(k + '-01').toLocaleDateString('en-US', { month: 'short', year: '2-digit' }),
+      sent: Math.round(v.sent * 10) / 10,
+      received: Math.round(v.received * 10) / 10,
+    }));
+
+  const counts = {
+    pending: allGifts.filter((g) => g.status === 'pending').length,
+    accepted: allGifts.filter((g) => g.status === 'accepted').length,
+    scheduled: allGifts.filter((g) => g.status === 'scheduled').length,
+    completed: allGifts.filter((g) => g.status === 'completed').length,
+    expired: allGifts.filter((g) => g.status === 'expired').length,
+  };
+  const statusChartData = [
+    { name: 'Pending', value: counts.pending, color: '#a8501e' },
+    { name: 'Accepted', value: counts.accepted, color: '#4f7a99' },
+    { name: 'Scheduled', value: counts.scheduled, color: '#6b5b8b' },
+    { name: 'Completed', value: counts.completed, color: '#4e6b3d' },
+    { name: 'Expired', value: counts.expired, color: '#9c3f4a' },
+  ].filter((i) => i.value > 0);
+
+  const recipientCounts: Record<string, number> = {};
+  for (const g of sent) {
+    const name = g.recipient_email || g.recipient_phone || 'Unknown';
+    recipientCounts[name] = (recipientCounts[name] || 0) + 1;
+  }
+  const topRecipients = Object.entries(recipientCounts)
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 5)
+    .map(([name, count]) => ({ name: name.substring(0, 20), count }));
+
+  return {
+    totalHoursGifted,
+    totalHoursReceived,
+    totalGifts: allGifts.length,
+    completedGifts: counts.completed,
+    monthlyChartData,
+    statusChartData,
+    topRecipients,
+  };
 }

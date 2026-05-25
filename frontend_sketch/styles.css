@@ -1,7 +1,4 @@
-@import "tailwindcss";
-
-/* ===== TimeGift — Editorial visual system =====
-   Ported from frontend_sketch/styles.css. Paper-and-letter aesthetic. */
+/* ===== TimeGift — Editorial visual system ===== */
 
 :root {
   /* Surfaces */
@@ -15,8 +12,8 @@
   --hairline: #d9d0bf;
   --hairline-soft: #e6dfd1;
 
-  /* Accent — overridable via tweaks panel later */
-  --accent: #a8501e;
+  /* Accent — overridable via tweaks */
+  --accent: #a8501e;        /* deep amber (default) */
   --accent-ink: #5d2c10;
   --accent-soft: #f1d9c2;
 
@@ -28,10 +25,10 @@
   --dust: #6b5b8b;
   --dust-soft: #ddd5e4;
 
-  /* Type — wired through next/font in layout.tsx */
-  --serif: var(--font-serif), "Iowan Old Style", Georgia, serif;
-  --sans: var(--font-sans), "Söhne", -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
-  --mono: var(--font-mono), ui-monospace, "SF Mono", monospace;
+  /* Type */
+  --serif: "Instrument Serif", "Iowan Old Style", Georgia, serif;
+  --sans: "Geist", "Söhne", -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+  --mono: "Geist Mono", ui-monospace, "SF Mono", monospace;
 
   /* Geometry */
   --r-sm: 4px;
@@ -56,7 +53,7 @@ html, body {
   text-rendering: optimizeLegibility;
 }
 
-/* Paper grain */
+/* Subtle paper grain */
 body::before {
   content: "";
   position: fixed;
@@ -65,12 +62,20 @@ body::before {
   z-index: 0;
   opacity: 0.35;
   mix-blend-mode: multiply;
-  background-image: radial-gradient(rgba(120, 100, 70, 0.05) 1px, transparent 1px);
+  background-image:
+    radial-gradient(rgba(120, 100, 70, 0.05) 1px, transparent 1px);
   background-size: 3px 3px;
 }
 body.no-grain::before { display: none; }
 
+#app {
+  position: relative;
+  z-index: 1;
+  min-height: 100vh;
+}
+
 /* ===== Typography ===== */
+
 .serif { font-family: var(--serif); font-weight: 400; }
 .sans { font-family: var(--sans); }
 .mono { font-family: var(--mono); }
@@ -111,11 +116,11 @@ a { color: inherit; text-decoration: none; }
   border-bottom: 1px solid currentColor;
   padding-bottom: 1px;
   transition: opacity 0.2s;
-  cursor: pointer;
 }
 .link:hover { opacity: 0.6; }
 
 /* ===== Layout ===== */
+
 .container {
   max-width: var(--maxw);
   margin: 0 auto;
@@ -127,6 +132,7 @@ a { color: inherit; text-decoration: none; }
 }
 
 /* ===== Nav ===== */
+
 .nav {
   display: flex;
   align-items: center;
@@ -179,6 +185,7 @@ a { color: inherit; text-decoration: none; }
 }
 
 /* ===== Buttons ===== */
+
 .btn {
   display: inline-flex;
   align-items: center;
@@ -197,26 +204,22 @@ a { color: inherit; text-decoration: none; }
   text-align: center;
   white-space: nowrap;
 }
-.btn:hover:not(:disabled) { background: var(--accent); border-color: var(--accent); }
-.btn:disabled { cursor: not-allowed; opacity: 0.5; }
+.btn:hover { background: var(--accent); border-color: var(--accent); }
 
 .btn-ghost {
   background: transparent;
   color: var(--ink);
   border-color: var(--hairline);
 }
-.btn-ghost:hover:not(:disabled) { background: var(--paper-warm); border-color: var(--ink); color: var(--ink); }
+.btn-ghost:hover { background: var(--paper-warm); border-color: var(--ink); color: var(--ink); }
 
 .btn-quiet {
   background: transparent;
   color: var(--muted);
   border: none;
   padding: 8px 0;
-  cursor: pointer;
-  font-family: var(--sans);
-  font-size: 13px;
 }
-.btn-quiet:hover:not(:disabled) { color: var(--ink); background: transparent; }
+.btn-quiet:hover { color: var(--ink); background: transparent; }
 
 .btn-lg { padding: 14px 24px; font-size: 14.5px; }
 
@@ -225,9 +228,10 @@ a { color: inherit; text-decoration: none; }
   border-color: var(--accent);
   color: #fdf8ed;
 }
-.btn-accent:hover:not(:disabled) { background: var(--accent-ink); border-color: var(--accent-ink); }
+.btn-accent:hover { background: var(--accent-ink); border-color: var(--accent-ink); }
 
 /* ===== Cards ===== */
+
 .card {
   background: #fbf7ee;
   border: 1px solid var(--hairline);
@@ -244,6 +248,7 @@ a { color: inherit; text-decoration: none; }
   box-shadow: 0 1px 0 rgba(0,0,0,0.04), 0 18px 40px -28px rgba(60, 40, 20, 0.25);
 }
 
+/* Postage stamp corner */
 .stamp {
   position: absolute;
   top: 18px;
@@ -263,6 +268,7 @@ a { color: inherit; text-decoration: none; }
   line-height: 1.15;
 }
 
+/* Hairline divider */
 .hr {
   height: 1px;
   background: var(--hairline);
@@ -271,6 +277,7 @@ a { color: inherit; text-decoration: none; }
 }
 
 /* ===== Form ===== */
+
 .field { display: flex; flex-direction: column; gap: 8px; }
 .field-label {
   font-family: var(--sans);
@@ -291,7 +298,6 @@ a { color: inherit; text-decoration: none; }
   outline: none;
   transition: border-color 0.15s;
   border-radius: 0;
-  width: 100%;
 }
 .input:focus, .textarea:focus, .select:focus { border-bottom-color: var(--ink); }
 .input::placeholder, .textarea::placeholder { color: var(--muted-2); }
@@ -312,6 +318,7 @@ a { color: inherit; text-decoration: none; }
 .input-boxed:focus { border-color: var(--ink); }
 
 /* ===== Tag / pill ===== */
+
 .tag {
   display: inline-flex;
   align-items: center;
@@ -330,18 +337,13 @@ a { color: inherit; text-decoration: none; }
 .tag.pending .tag-dot { background: var(--accent); }
 .tag.accepted { color: #2d4b62; border-color: #cfd9e2; background: #e2eaf1; }
 .tag.accepted .tag-dot { background: #4f7a99; }
-.tag.scheduled { color: #2d4b62; border-color: #cfd9e2; background: #e2eaf1; }
-.tag.scheduled .tag-dot { background: #4f7a99; }
 .tag.completed { color: #2d4a25; border-color: var(--moss-soft); background: var(--moss-soft); }
 .tag.completed .tag-dot { background: var(--moss); }
 .tag.expired { color: #5b2228; border-color: var(--rose-soft); background: var(--rose-soft); }
 .tag.expired .tag-dot { background: var(--rose); }
-.tag.declined { color: #5b2228; border-color: var(--rose-soft); background: var(--rose-soft); }
-.tag.declined .tag-dot { background: var(--rose); }
-.tag.cancelled { color: var(--muted); border-color: var(--hairline); background: transparent; }
-.tag.cancelled .tag-dot { background: var(--muted); }
 
-/* ===== Avatar ===== */
+/* ===== Avatar (initial-only, no images) ===== */
+
 .avatar {
   width: 36px;
   height: 36px;
@@ -359,7 +361,18 @@ a { color: inherit; text-decoration: none; }
 .avatar.lg { width: 52px; height: 52px; font-size: 21px; }
 .avatar.sm { width: 28px; height: 28px; font-size: 12.5px; }
 
+/* ===== Animations ===== */
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.fade-up { opacity: 1; }
+
+.fade-in { opacity: 1; }
+
 /* ===== Utility ===== */
+
 .muted { color: var(--muted); }
 .ink-soft { color: var(--ink-soft); }
 .center { text-align: center; }
@@ -377,10 +390,15 @@ a { color: inherit; text-decoration: none; }
 .grid { display: grid; }
 
 /* ===== Page sections ===== */
-.section { padding: 80px 0; }
+.section {
+  padding: 80px 0;
+}
 .section-tight { padding: 48px 0; }
 
-.subtle-divider { border-top: 1px solid var(--hairline-soft); margin: 0; }
+.subtle-divider {
+  border-top: 1px solid var(--hairline-soft);
+  margin: 0;
+}
 
 /* Focus accent for the recipient view */
 .envelope {
@@ -394,6 +412,7 @@ a { color: inherit; text-decoration: none; }
   box-shadow: 0 2px 0 rgba(0,0,0,0.04), 0 30px 60px -34px rgba(60, 40, 20, 0.3);
 }
 
+/* Subtle "wax seal" */
 .seal {
   width: 64px;
   height: 64px;
@@ -419,10 +438,6 @@ a { color: inherit; text-decoration: none; }
   color: var(--muted);
   letter-spacing: 0.04em;
 }
-.step {
-  display: inline-flex;
-  align-items: center;
-}
 .step-num {
   width: 22px; height: 22px;
   border: 1px solid var(--hairline);
@@ -435,11 +450,11 @@ a { color: inherit; text-decoration: none; }
 }
 .step.active .step-num { background: var(--ink); color: var(--paper); border-color: var(--ink); }
 .step.done .step-num { background: var(--accent); color: #fdf8ed; border-color: var(--accent); }
-.step .step-label { color: var(--muted); margin-left: 8px; }
+.step .step-label { color: var(--muted); }
 .step.active .step-label { color: var(--ink); }
 .steps .step-line { width: 28px; height: 1px; background: var(--hairline); }
 
-/* Iconography */
+/* Iconography — tiny inline SVG-style strokes */
 .ico { width: 16px; height: 16px; flex-shrink: 0; }
 .ico-lg { width: 22px; height: 22px; }
 
@@ -476,7 +491,11 @@ a { color: inherit; text-decoration: none; }
 }
 
 /* Big stat */
-.stat { display: flex; flex-direction: column; gap: 6px; }
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
 .stat-num {
   font-family: var(--serif);
   font-size: 64px;
@@ -492,6 +511,7 @@ a { color: inherit; text-decoration: none; }
   color: var(--muted);
 }
 
+/* Subtle background block for hero */
 .hero-block {
   background: var(--paper-warm);
   border-radius: var(--r-lg);
@@ -499,6 +519,7 @@ a { color: inherit; text-decoration: none; }
   border: 1px solid var(--hairline-soft);
 }
 
+/* Letter handwriting feel */
 .handwritten {
   font-family: var(--serif);
   font-style: italic;
@@ -540,7 +561,7 @@ a { color: inherit; text-decoration: none; }
   font-variant-numeric: tabular-nums;
 }
 
-/* Polaroid */
+/* Memory polaroid */
 .polaroid {
   background: #fbf7ee;
   border: 1px solid var(--hairline);
@@ -559,9 +580,7 @@ a { color: inherit; text-decoration: none; }
   color: var(--muted-2);
   font-family: var(--serif);
   font-style: italic;
-  overflow: hidden;
 }
-.polaroid-img img { width: 100%; height: 100%; object-fit: cover; }
 .polaroid-cap {
   margin-top: 12px;
   font-family: var(--serif);
@@ -571,7 +590,7 @@ a { color: inherit; text-decoration: none; }
   text-align: center;
 }
 
-/* Toggle group */
+/* Toggle */
 .toggle-group {
   display: inline-flex;
   border: 1px solid var(--hairline);
@@ -588,9 +607,6 @@ a { color: inherit; text-decoration: none; }
   color: var(--muted);
   font-family: var(--sans);
   border-right: 1px solid var(--hairline);
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
 }
 .toggle-opt:last-child { border-right: none; }
 .toggle-opt.active { background: var(--ink); color: var(--paper); }

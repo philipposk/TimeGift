@@ -4,72 +4,231 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getCurrentUser } from '@/utils/auth';
 import { getSupabaseBrowserClient } from '@/lib/supabase';
-import Navbar from '@/components/navbar';
-import ProfileClient from '@/components/profile-client';
+import { TopNav } from '@/components/tg/nav';
+import { Footer } from '@/components/tg/footer';
+import { Icon } from '@/components/tg/icon';
+import { Avatar } from '@/components/tg/avatar';
+
+interface Profile {
+  id: string;
+  email: string | null;
+  phone: string | null;
+  username: string;
+  display_name: string | null;
+  avatar_url: string | null;
+  privacy_level: 'closed' | 'friends' | 'public';
+  accept_stranger_gifts: boolean;
+  opt_in_random_exchange: boolean;
+}
 
 export default function ProfilePage() {
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
-  const [profile, setProfile] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {
-    async function loadData() {
-      try {
-        const currentUser = await getCurrentUser();
-
-        if (!currentUser) {
-          setUser(null);
-          setProfile(null);
-          setLoading(false);
-          return;
-        }
-
-        setUser(currentUser);
-
-        const supabase = getSupabaseBrowserClient();
-        const { data: profileData } = await supabase
-          .from('users')
-          .select('*')
-          .eq('id', currentUser.id)
-          .single();
-
-        setProfile(profileData);
-      } catch (error) {
-        console.error('Error loading profile:', error);
-        setUser(null);
-        setProfile(null);
-      } finally {
-        setLoading(false);
+    async function load() {
+      const me = await getCurrentUser();
+      if (!me) {
+        router.push('/auth/signin?next=/profile');
+        return;
       }
+      setUser(me);
+      const supabase = getSupabaseBrowserClient();
+      const { data } = await supabase.from('users').select('*').eq('id', me.id).single();
+      setProfile(data);
     }
-
-    loadData();
+    load();
   }, [router]);
 
-  if (loading) {
+  function update<K extends keyof Profile>(key: K, val: Profile[K]) {
+    setProfile((p) => (p ? { ...p, [key]: val } : p));
+  }
+
+  async function save() {
+    if (!profile) return;
+    setBusy(true);
+    setMsg(null);
+    setErr(null);
+    const supabase = getSupabaseBrowserClient();
+    const { error } = await supabase
+      .from('users')
+      .update({
+        display_name: profile.display_name,
+        phone: profile.phone,
+        privacy_level: profile.privacy_level,
+        accept_stranger_gifts: profile.accept_stranger_gifts,
+        opt_in_random_exchange: profile.opt_in_random_exchange,
+        avatar_url: profile.avatar_url,
+      })
+      .eq('id', profile.id);
+    setBusy(false);
+    if (error) setErr(error.message);
+    else setMsg('Saved.');
+  }
+
+  if (!user || !profile) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-blue-50 dark:from-gray-900 dark:via-purple-900/20 dark:to-blue-900/20 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-500 mx-auto mb-4"></div>
-          <p className="text-gray-600 dark:text-gray-400">Loading...</p>
-        </div>
-      </div>
+      <>
+        <TopNav />
+        <main>
+          <div className="container" style={{ paddingTop: 80 }}>
+            <div className="serif italic muted center" style={{ fontSize: 22 }}>Loading…</div>
+          </div>
+        </main>
+      </>
     );
   }
 
-  const userData = user ? {
-    id: user.id,
-    username: profile?.username,
-    displayName: profile?.display_name,
-    avatarUrl: profile?.avatar_url,
-    isAdmin: profile?.is_admin,
-  } : null;
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-blue-50 dark:from-gray-900 dark:via-purple-900/20 dark:to-blue-900/20">
-      <Navbar user={userData} />
-      <ProfileClient user={userData} profile={profile} isGuest={!user} />
-    </div>
+    <>
+      <TopNav />
+      <main>
+        <div className="container" style={{ paddingTop: 24, paddingBottom: 80, maxWidth: 720 }}>
+          <div className="stack gap-2 mb-8">
+            <div className="eyebrow">You</div>
+            <h1 style={{ fontSize: 48, letterSpacing: '-0.025em', lineHeight: 1 }}>Your profile</h1>
+          </div>
+
+          <div className="row gap-6 mb-8" style={{ alignItems: 'center' }}>
+            <Avatar name={profile.display_name || profile.username} url={profile.avatar_url} size="lg" />
+            <div>
+              <div className="serif" style={{ fontSize: 22 }}>{profile.display_name || profile.username}</div>
+              <div className="meta">@{profile.username}</div>
+            </div>
+          </div>
+
+          <div className="stack gap-6">
+            <div className="field">
+              <label className="field-label">Display name</label>
+              <input
+                className="input"
+                value={profile.display_name || ''}
+                onChange={(e) => update('display_name', e.target.value)}
+              />
+            </div>
+            <div className="field">
+              <label className="field-label">Email</label>
+              <input className="input" value={profile.email || ''} disabled />
+              <span className="meta">Email is managed by your account provider.</span>
+            </div>
+            <div className="field">
+              <label className="field-label">Phone (for SMS / WhatsApp gifts)</label>
+              <input
+                className="input"
+                type="tel"
+                value={profile.phone || ''}
+                onChange={(e) => update('phone', e.target.value)}
+                placeholder="+1 555 0100"
+              />
+            </div>
+
+            <div className="field">
+              <label className="field-label">Avatar URL (optional)</label>
+              <input
+                className="input"
+                value={profile.avatar_url || ''}
+                onChange={(e) => update('avatar_url', e.target.value)}
+                placeholder="https://…"
+              />
+            </div>
+          </div>
+
+          <div className="stack gap-6 mt-12">
+            <div className="eyebrow">Who can send you gifts</div>
+            <div className="stack gap-3">
+              {(['public', 'friends', 'closed'] as const).map((level) => (
+                <button
+                  key={level}
+                  onClick={() => update('privacy_level', level)}
+                  style={{
+                    background: profile.privacy_level === level ? 'var(--paper-warm)' : 'transparent',
+                    border:
+                      '1px solid ' +
+                      (profile.privacy_level === level ? 'var(--ink)' : 'var(--hairline)'),
+                    padding: '16px 18px',
+                    borderRadius: 6,
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                  }}
+                >
+                  <div className="serif" style={{ fontSize: 17 }}>
+                    {level === 'public' && 'Anyone'}
+                    {level === 'friends' && 'Friends only'}
+                    {level === 'closed' && 'Closed'}
+                  </div>
+                  <div className="meta mt-1">
+                    {level === 'public' && 'Any user can send you a gift.'}
+                    {level === 'friends' && 'Only people you’ve accepted as friends can send.'}
+                    {level === 'closed' && 'No one can send you gifts. Email/phone strangers still need accept_stranger_gifts on.'}
+                  </div>
+                </button>
+              ))}
+            </div>
+
+            <label
+              className="row gap-3"
+              style={{ alignItems: 'flex-start', cursor: 'pointer', padding: 16, border: '1px solid var(--hairline)', borderRadius: 6 }}
+            >
+              <input
+                type="checkbox"
+                checked={profile.accept_stranger_gifts}
+                onChange={(e) => update('accept_stranger_gifts', e.target.checked)}
+                style={{ marginTop: 4 }}
+              />
+              <div>
+                <div className="serif" style={{ fontSize: 16 }}>Accept gifts from strangers</div>
+                <div className="meta">Allows email/phone-only senders even if you’re friends-only or closed.</div>
+              </div>
+            </label>
+
+            <label
+              className="row gap-3"
+              style={{ alignItems: 'flex-start', cursor: 'pointer', padding: 16, border: '1px solid var(--hairline)', borderRadius: 6 }}
+            >
+              <input
+                type="checkbox"
+                checked={profile.opt_in_random_exchange}
+                onChange={(e) => update('opt_in_random_exchange', e.target.checked)}
+                style={{ marginTop: 4 }}
+              />
+              <div>
+                <div className="serif" style={{ fontSize: 16 }}>Opt in to random exchange</div>
+                <div className="meta">Once a month you’ll be matched with another opted-in user for a mutual gift.</div>
+              </div>
+            </label>
+          </div>
+
+          {(msg || err) && (
+            <div
+              className="mt-6"
+              style={{
+                padding: 12,
+                border: '1px solid ' + (err ? 'var(--rose-soft)' : 'var(--moss-soft)'),
+                background: err ? 'var(--rose-soft)' : 'var(--moss-soft)',
+                color: err ? '#5b2228' : '#2d4a25',
+                borderRadius: 6,
+                fontSize: 14,
+              }}
+            >
+              {err || msg}
+            </div>
+          )}
+
+          <div className="row between mt-8" style={{ paddingTop: 24, borderTop: '1px solid var(--hairline-soft)' }}>
+            <a href="/auth/signout" className="btn-quiet">
+              <Icon name="x" size={14} /> Sign out
+            </a>
+            <button className="btn btn-accent" onClick={save} disabled={busy}>
+              {busy ? 'Saving…' : 'Save changes'}
+            </button>
+          </div>
+        </div>
+        <Footer />
+      </main>
+    </>
   );
 }

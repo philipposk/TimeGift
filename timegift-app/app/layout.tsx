@@ -1,16 +1,30 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Instrument_Serif, Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { ThemeProvider } from "@/lib/theme-provider";
 
-const inter = Inter({
+const serif = Instrument_Serif({
   subsets: ["latin"],
-  variable: "--font-inter",
+  weight: ["400"],
+  style: ["normal", "italic"],
+  variable: "--font-serif",
+});
+
+const sans = Geist({
+  subsets: ["latin"],
+  weight: ["300", "400", "500", "600"],
+  variable: "--font-sans",
+});
+
+const mono = Geist_Mono({
+  subsets: ["latin"],
+  weight: ["400", "500"],
+  variable: "--font-mono",
 });
 
 export const metadata: Metadata = {
-  title: "TimeGift - Gift Your Time with Love",
-  description: "Gift the moments that matter. Create, share, and track meaningful time gifts with the people you care about.",
+  title: "Timegift — Give someone your time",
+  description:
+    "Not a thing you bought. A morning. A long walk. The whole of next Sunday. Write it down, send it across, and mean it.",
   keywords: ["time gift", "personal gift", "scheduling", "quality time"],
   icons: {
     icon: "/icon",
@@ -25,11 +39,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body className={`${inter.variable} antialiased`}>
-        <ThemeProvider>
+    <html lang="en">
+      <body className={`${serif.variable} ${sans.variable} ${mono.variable}`}>
+        <div id="app" style={{ position: "relative", zIndex: 1, minHeight: "100vh" }}>
           {children}
-        </ThemeProvider>
+        </div>
       </body>
     </html>
   );

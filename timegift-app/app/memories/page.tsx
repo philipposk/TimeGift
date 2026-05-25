@@ -1,327 +1,190 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Camera, Heart, Calendar, MapPin, Sparkles, X, Share2 } from 'lucide-react';
-import Navbar from '@/components/navbar';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { getCurrentUser } from '@/utils/auth';
 import { getSupabaseBrowserClient } from '@/lib/supabase';
-import Link from 'next/link';
-import ShareMemoryModal from '@/components/share-memory-modal';
+import { TopNav } from '@/components/tg/nav';
+import { Footer } from '@/components/tg/footer';
+import { Icon } from '@/components/tg/icon';
+import { Polaroid } from '@/components/tg/polaroid';
 
 interface Memory {
   id: string;
-  gift_id: string;
-  gift?: any;
-  photo_url?: string;
-  story?: string;
-  location?: string;
-  created_at: string;
+  message: string;
+  memory_photo_url?: string | null;
+  memory_story?: string | null;
+  memory_location?: string | null;
+  completed_at: string;
+  sender_id: string;
+  recipient_id: string;
+  purpose_type: string;
+  purpose_details?: string | null;
+}
+
+interface UserMin {
+  id: string;
+  display_name: string | null;
+  username: string | null;
 }
 
 export default function MemoriesPage() {
+  const router = useRouter();
   const [user, setUser] = useState<any>(null);
   const [memories, setMemories] = useState<Memory[]>([]);
+  const [users, setUsers] = useState<Record<string, UserMin>>({});
+  const [completableGifts, setCompletableGifts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedMemory, setSelectedMemory] = useState<Memory | null>(null);
-  const [memoryToShare, setMemoryToShare] = useState<Memory | null>(null);
 
   useEffect(() => {
-    async function loadData() {
-      try {
-        const currentUser = await getCurrentUser();
-        if (!currentUser) {
-          setUser(null);
-          setMemories([]);
-          setLoading(false);
-          return;
-        }
-
-        setUser(currentUser);
-
-        const supabase = getSupabaseBrowserClient();
-        const { data: gifts } = await supabase
-          .from('gifts')
-          .select('*')
-          .eq('status', 'completed')
-          .or(`sender_id.eq.${currentUser.id},recipient_id.eq.${currentUser.id}`)
-          .order('completed_at', { ascending: false });
-
-        const memoriesList: Memory[] = (gifts || [])
-          .filter((g) => g.memory_photo_url || g.memory_story)
-          .map((g) => ({
-            id: g.id,
-            gift_id: g.id,
-            gift: g,
-            photo_url: g.memory_photo_url,
-            story: g.memory_story,
-            location: g.memory_location,
-            created_at: g.completed_at || g.created_at,
-          }));
-
-        setMemories(memoriesList);
-      } catch (error) {
-        console.error('Error loading memories:', error);
-        setMemories([]);
-      } finally {
-        setLoading(false);
+    async function load() {
+      const me = await getCurrentUser();
+      if (!me) {
+        router.push('/auth/signin?next=/memories');
+        return;
       }
+      setUser(me);
+      const supabase = getSupabaseBrowserClient();
+
+      const { data: mems } = await supabase
+        .from('gifts')
+        .select('id, message, memory_photo_url, memory_story, memory_location, completed_at, sender_id, recipient_id, purpose_type, purpose_details')
+        .or(`sender_id.eq.${me.id},recipient_id.eq.${me.id}`)
+        .eq('status', 'completed')
+        .or('memory_photo_url.not.is.null,memory_story.not.is.null')
+        .order('completed_at', { ascending: false });
+
+      setMemories(mems || []);
+
+      const { data: completable } = await supabase
+        .from('gifts')
+        .select('id, message, sender_id, recipient_id, purpose_details, purpose_type')
+        .or(`sender_id.eq.${me.id},recipient_id.eq.${me.id}`)
+        .eq('status', 'completed')
+        .is('memory_story', null)
+        .is('memory_photo_url', null)
+        .order('completed_at', { ascending: false })
+        .limit(6);
+
+      setCompletableGifts(completable || []);
+
+      const ids = new Set<string>();
+      for (const m of mems || []) {
+        if (m.sender_id !== me.id) ids.add(m.sender_id);
+        if (m.recipient_id !== me.id) ids.add(m.recipient_id);
+      }
+      for (const g of completable || []) {
+        if (g.sender_id !== me.id) ids.add(g.sender_id);
+        if (g.recipient_id !== me.id) ids.add(g.recipient_id);
+      }
+      if (ids.size > 0) {
+        const { data: us } = await supabase
+          .from('users')
+          .select('id, display_name, username')
+          .in('id', Array.from(ids));
+        const map: Record<string, UserMin> = {};
+        for (const u of us || []) map[u.id] = u;
+        setUsers(map);
+      }
+
+      setLoading(false);
     }
+    load();
+  }, [router]);
 
-    loadData();
-  }, []);
-
-  if (loading) {
+  if (loading || !user) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-blue-50 dark:from-gray-900 dark:via-purple-900/20 dark:to-blue-900/20 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-500 mx-auto mb-4"></div>
-          <p className="text-gray-600 dark:text-gray-400">Loading memories...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!user) {
-    const userData = null;
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-blue-50 dark:from-gray-900 dark:via-purple-900/20 dark:to-blue-900/20">
-        <Navbar user={userData} />
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-12 text-center">
-            <Camera className="w-20 h-20 text-pink-500 mx-auto mb-6" />
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
-              Time Memories Gallery
-            </h1>
-            <p className="text-xl text-gray-600 dark:text-gray-400 mb-8">
-              Sign in to view and create beautiful memories from your completed time gifts!
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link
-                href="/auth/signup"
-                className="px-8 py-4 text-lg font-semibold text-white bg-gradient-to-r from-pink-500 to-purple-600 rounded-full hover:from-pink-600 hover:to-purple-700 transform hover:scale-105 transition-all shadow-lg"
-              >
-                Get Started for Free
-              </Link>
-              <Link
-                href="/auth/signin"
-                className="px-8 py-4 text-lg font-semibold text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 rounded-full hover:bg-gray-50 dark:hover:bg-gray-600 transition-all shadow-md"
-              >
-                Sign In
-              </Link>
-            </div>
+      <>
+        <TopNav />
+        <main>
+          <div className="container" style={{ paddingTop: 80 }}>
+            <div className="serif italic muted center" style={{ fontSize: 22 }}>Loading…</div>
           </div>
-        </div>
-      </div>
+        </main>
+      </>
     );
   }
-
-  const userData = {
-    id: user.id,
-    username: user.username,
-    displayName: user.displayName,
-    avatarUrl: user.avatarUrl,
-    isAdmin: user.isAdmin,
-  };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-blue-50 dark:from-gray-900 dark:via-purple-900/20 dark:to-blue-900/20">
-      <Navbar user={userData} />
+    <>
+      <TopNav />
+      <main>
+        <div className="container" style={{ paddingTop: 24, paddingBottom: 80 }}>
+          <div className="row between" style={{ alignItems: 'flex-end', marginBottom: 48 }}>
+            <div className="stack gap-2">
+              <div className="eyebrow">Kept · {memories.length} memories</div>
+              <h1 style={{ fontSize: 56, letterSpacing: '-0.025em', lineHeight: 1 }}>
+                <em style={{ color: 'var(--accent)' }}>Days</em> we spent.
+              </h1>
+              <p className="lede muted" style={{ maxWidth: 540, marginTop: 8 }}>
+                A photograph and a sentence from each gift you&apos;ve redeemed. Not a feed. A small private
+                shelf.
+              </p>
+            </div>
+          </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="text-center mb-12">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-pink-500 to-purple-600 rounded-full mb-6">
-            <Camera className="w-8 h-8 text-white" />
-          </div>
-          <h1 className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-4">
-            Time Memories Gallery
-          </h1>
-          <p className="text-xl text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
-            A beautiful collection of moments spent together. Each completed time gift becomes a cherished memory.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 text-center">
-            <Heart className="w-8 h-8 text-pink-500 mx-auto mb-2" />
-            <p className="text-3xl font-bold text-gray-900 dark:text-white">{memories.length}</p>
-            <p className="text-sm text-gray-600 dark:text-gray-400">Memories Created</p>
-          </div>
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 text-center">
-            <Calendar className="w-8 h-8 text-purple-500 mx-auto mb-2" />
-            <p className="text-3xl font-bold text-gray-900 dark:text-white">
-              {memories.filter((m) => m.photo_url).length}
-            </p>
-            <p className="text-sm text-gray-600 dark:text-gray-400">With Photos</p>
-          </div>
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 text-center">
-            <Sparkles className="w-8 h-8 text-blue-500 mx-auto mb-2" />
-            <p className="text-3xl font-bold text-gray-900 dark:text-white">
-              {memories.filter((m) => m.story).length}
-            </p>
-            <p className="text-sm text-gray-600 dark:text-gray-400">With Stories</p>
-          </div>
-        </div>
-
-        {memories.length === 0 ? (
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-12 text-center">
-            <Camera className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-              No Memories Yet
-            </h2>
-            <p className="text-gray-600 dark:text-gray-400 mb-6">
-              Complete a time gift and add a photo or story to create your first memory!
-            </p>
-            <Link
-              href="/dashboard"
-              className="inline-block px-6 py-3 bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white font-semibold rounded-lg transition-all"
-            >
-              Go to Dashboard
-            </Link>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {memories.map((memory) => {
-              const date = new Date(memory.created_at);
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 32 }}>
+            {memories.map((m, i) => {
+              const otherId = m.sender_id === user.id ? m.recipient_id : m.sender_id;
+              const other = users[otherId];
+              const otherName = other?.display_name || other?.username || 'Together';
+              const when = new Date(m.completed_at).toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric',
+              });
+              const purpose = m.purpose_type === 'specific' && m.purpose_details ? m.purpose_details : 'Anything';
               return (
-                <div
-                  key={memory.id}
-                  className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-all group"
-                >
-                  <button
-                    onClick={() => setSelectedMemory(memory)}
-                    className="w-full text-left"
-                  >
-                    {memory.photo_url ? (
-                      <div className="relative h-48 overflow-hidden">
-                        <img
-                          src={memory.photo_url}
-                          alt="Memory"
-                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                        <div className="absolute bottom-0 left-0 right-0 p-4 text-white">
-                          <p className="font-semibold text-sm mb-1">
-                            {memory.gift?.message?.substring(0, 50)}...
-                          </p>
-                          <div className="flex items-center space-x-2 text-xs opacity-90">
-                            <Calendar className="w-3 h-3" />
-                            <span>{date.toLocaleDateString()}</span>
-                          </div>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="h-48 bg-gradient-to-br from-pink-100 to-purple-100 dark:from-pink-900/20 dark:to-purple-900/20 flex items-center justify-center">
-                        <Heart className="w-12 h-12 text-pink-500 opacity-50" />
-                      </div>
-                    )}
-                    <div className="p-4">
-                      {memory.story && (
-                        <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2 mb-2">
-                          {memory.story}
-                        </p>
-                      )}
-                      {memory.location && (
-                        <div className="flex items-center space-x-1 text-xs text-gray-500 dark:text-gray-400">
-                          <MapPin className="w-3 h-3" />
-                          <span>{memory.location}</span>
-                        </div>
-                      )}
-                    </div>
-                  </button>
-                  <div className="px-4 pb-4 flex items-center justify-end">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setMemoryToShare(memory);
-                      }}
-                      className="flex items-center space-x-2 px-3 py-2 text-sm text-pink-600 dark:text-pink-400 hover:bg-pink-50 dark:hover:bg-pink-900/20 rounded-lg transition-colors"
-                    >
-                      <Share2 className="w-4 h-4" />
-                      <span>Share</span>
-                    </button>
-                  </div>
-                </div>
+                <Polaroid
+                  key={m.id}
+                  imageUrl={m.memory_photo_url || null}
+                  caption={m.memory_story || undefined}
+                  meta={`with ${otherName} · ${when}`}
+                  placeholder={purpose}
+                  rotate={i % 2 === 0 ? -0.6 : 0.7}
+                />
               );
             })}
-          </div>
-        )}
-      </div>
 
-      {selectedMemory && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
-          onClick={() => setSelectedMemory(null)}
-        >
-          <div
-            className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="relative">
-              {selectedMemory.photo_url && (
-                <img
-                  src={selectedMemory.photo_url}
-                  alt="Memory"
-                  className="w-full h-64 object-cover"
-                />
-              )}
-              <button
-                onClick={() => setSelectedMemory(null)}
-                className="absolute top-4 right-4 p-2 bg-white/90 dark:bg-gray-800/90 rounded-full hover:bg-white dark:hover:bg-gray-800 transition-colors"
+            {completableGifts.length > 0 && (
+              <Link
+                href={`/gifts/${completableGifts[0].id}`}
+                className="polaroid"
+                style={{
+                  cursor: 'pointer',
+                  border: '1px dashed var(--hairline)',
+                  background: 'transparent',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  minHeight: 280,
+                }}
               >
-                <X className="w-5 h-5 text-gray-900 dark:text-white" />
-              </button>
-            </div>
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center space-x-2 text-sm text-gray-500 dark:text-gray-400">
-                  <Calendar className="w-4 h-4" />
-                  <span>{new Date(selectedMemory.created_at).toLocaleDateString()}</span>
-                  {selectedMemory.location && (
-                    <>
-                      <span>•</span>
-                      <MapPin className="w-4 h-4" />
-                      <span>{selectedMemory.location}</span>
-                    </>
-                  )}
+                <Icon name="plus" size={24} className="muted" />
+                <div className="serif italic muted" style={{ marginTop: 12 }}>Add a memory</div>
+                <div className="meta center" style={{ maxWidth: 220, marginTop: 6 }}>
+                  {completableGifts.length} completed {completableGifts.length === 1 ? 'gift' : 'gifts'} waiting
                 </div>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setSelectedMemory(null);
-                    setMemoryToShare(selectedMemory);
-                  }}
-                  className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white font-semibold rounded-lg transition-all"
-                >
-                  <Share2 className="w-4 h-4" />
-                  <span>Share</span>
-                </button>
+              </Link>
+            )}
+
+            {memories.length === 0 && completableGifts.length === 0 && (
+              <div
+                className="card center"
+                style={{ gridColumn: '1 / -1', padding: '64px 32px' }}
+              >
+                <div className="serif italic muted" style={{ fontSize: 22, marginBottom: 8 }}>
+                  No memories yet.
+                </div>
+                <div className="meta">Complete a time gift and add a photo or story.</div>
               </div>
-              {selectedMemory.gift?.message && (
-                <div className="mb-4 p-4 bg-pink-50 dark:bg-pink-900/20 rounded-lg">
-                  <p className="text-gray-700 dark:text-gray-300 italic">
-                    "{selectedMemory.gift.message}"
-                  </p>
-                </div>
-              )}
-              {selectedMemory.story && (
-                <div>
-                  <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Our Story</h3>
-                  <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
-                    {selectedMemory.story}
-                  </p>
-                </div>
-              )}
-            </div>
+            )}
           </div>
         </div>
-      )}
-
-      {memoryToShare && (
-        <ShareMemoryModal
-          memory={memoryToShare}
-          onClose={() => setMemoryToShare(null)}
-        />
-      )}
-    </div>
+        <Footer />
+      </main>
+    </>
   );
 }
