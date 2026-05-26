@@ -451,6 +451,43 @@ function StepMessage({ data, update, userId }: { data: Draft; update: (p: Partia
     'No reason, just because. ',
   ];
 
+  const [wishes, setWishes] = useState<{ title: string; description: string | null }[]>([]);
+
+  // Look the recipient up by email/phone. If they're on Timegift and have any
+  // friend-visible wishes, surface them as one-tap prefill options.
+  useEffect(() => {
+    let cancelled = false;
+    const contact = data.recipientContact.trim();
+    if (!contact) {
+      setWishes([]);
+      return;
+    }
+    const body = data.recipientType === 'email' ? { emails: [contact] } : { phones: [contact] };
+    fetch('/api/contacts/match', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+      .then((r) => (r.ok ? r.json() : { matched: [] }))
+      .then(async (j) => {
+        const friend = (j.matched && j.matched[0]) || null;
+        if (!friend) {
+          if (!cancelled) setWishes([]);
+          return;
+        }
+        const res = await fetch(`/api/wishes?userId=${friend.id}`);
+        if (!res.ok) return;
+        const wj = await res.json();
+        if (!cancelled) setWishes((wj.wishes || []).slice(0, 4));
+      })
+      .catch(() => {
+        if (!cancelled) setWishes([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [data.recipientContact, data.recipientType]);
+
   async function generate() {
     try {
       const res = await fetch('/api/ai/generate-message', {
@@ -514,6 +551,42 @@ function StepMessage({ data, update, userId }: { data: Draft; update: (p: Partia
           </button>
         </div>
       </div>
+
+      {wishes.length > 0 && (
+        <div
+          className="stack gap-3"
+          style={{
+            padding: 16,
+            background: 'var(--paper-warm)',
+            border: '1px solid var(--hairline-soft)',
+            borderRadius: 6,
+          }}
+        >
+          <div className="eyebrow">Their wishlist</div>
+          <p className="meta" style={{ fontSize: 12.5, marginTop: -4 }}>
+            They asked for these. Click one to drop it into your letter.
+          </p>
+          <div className="row gap-2" style={{ flexWrap: 'wrap' }}>
+            {wishes.map((w, i) => (
+              <button
+                key={i}
+                type="button"
+                className="btn btn-ghost"
+                style={{ padding: '8px 12px', fontSize: 12.5 }}
+                onClick={() =>
+                  update({
+                    message:
+                      (data.message ? data.message.trimEnd() + '\n\n' : '') +
+                      `You said you wanted: ${w.title}. Here it is.`,
+                  })
+                }
+              >
+                {w.title}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="field">
         <label className="field-label">Voice memo (optional)</label>

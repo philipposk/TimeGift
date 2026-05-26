@@ -92,6 +92,20 @@ export function TopNav() {
                       Profile
                     </Link>
                     <Link
+                      href="/wishlist"
+                      onClick={() => setMenuOpen(false)}
+                      style={{ display: 'block', padding: '12px 16px', borderBottom: '1px solid var(--hairline-soft)' }}
+                    >
+                      Wishlist
+                    </Link>
+                    <Link
+                      href="/browse"
+                      onClick={() => setMenuOpen(false)}
+                      style={{ display: 'block', padding: '12px 16px', borderBottom: '1px solid var(--hairline-soft)' }}
+                    >
+                      Browse offers
+                    </Link>
+                    <Link
                       href="/analytics"
                       onClick={() => setMenuOpen(false)}
                       style={{ display: 'block', padding: '12px 16px', borderBottom: '1px solid var(--hairline-soft)' }}
