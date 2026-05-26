@@ -2,6 +2,7 @@ import { NextResponse, NextRequest } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
 import { getSupabaseServiceClient } from '@/lib/supabase';
 import { insertNotification } from '@/lib/notify';
+import { verifyTurnstile } from '@/lib/turnstile';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -70,11 +71,24 @@ export async function GET(
 // signed-in user's email/phone matches the token's recipient, links the gift
 // to their account, marks the token claimed.
 export async function POST(
-  _request: NextRequest,
+  request: NextRequest,
   context: { params: Promise<{ token: string }> }
 ) {
   const { token } = await context.params;
   if (!token) return NextResponse.json({ error: 'Token required' }, { status: 400 });
+
+  // Bot check.
+  let turnstileToken: string | undefined;
+  try {
+    const body = await request.json();
+    turnstileToken = body?.turnstileToken;
+  } catch {
+    // no body
+  }
+  const ip = request.headers.get('x-forwarded-for') || undefined;
+  if (!(await verifyTurnstile(turnstileToken, ip))) {
+    return NextResponse.json({ error: 'Bot check failed.' }, { status: 403 });
+  }
 
   const supabase = await createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();

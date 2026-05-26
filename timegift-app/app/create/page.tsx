@@ -25,6 +25,7 @@ interface Draft {
   expiryType: 'none' | '1m' | '3m' | '1y';
   voiceUrl: string | null;
   voiceDurationSeconds: number | null;
+  legacyVisibleAt: string | null;
 }
 
 const STEP_ITEMS = [
@@ -60,6 +61,7 @@ export default function CreatePage() {
     expiryType: 'none',
     voiceUrl: null,
     voiceDurationSeconds: null,
+    legacyVisibleAt: null,
   });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -105,6 +107,7 @@ export default function CreatePage() {
         expiryDate: expiryDateFor(data.expiryType),
         voiceUrl: data.voiceUrl,
         voiceDurationSeconds: data.voiceDurationSeconds,
+        legacyVisibleAt: data.legacyVisibleAt,
       };
       const res = await fetch('/api/gifts/create', {
         method: 'POST',
@@ -593,6 +596,35 @@ function StepReview({
               {o.l}
             </button>
           ))}
+        </div>
+      </div>
+
+      <div className="field">
+        <label className="field-label">Legacy letter (optional)</label>
+        <p className="meta" style={{ fontSize: 12.5, marginTop: -4 }}>
+          A date in the future. On that day this letter becomes a family heirloom — both you and the
+          recipient get a quiet reminder. Leave blank for none.
+        </p>
+        <div className="row gap-3" style={{ marginTop: 6 }}>
+          <input
+            type="date"
+            className="input-boxed"
+            min={new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 10)}
+            value={data.legacyVisibleAt ? data.legacyVisibleAt.slice(0, 10) : ''}
+            onChange={(e) =>
+              update({ legacyVisibleAt: e.target.value ? new Date(e.target.value).toISOString() : null })
+            }
+          />
+          {data.legacyVisibleAt && (
+            <button
+              className="btn-quiet"
+              type="button"
+              onClick={() => update({ legacyVisibleAt: null })}
+              style={{ fontSize: 12.5 }}
+            >
+              Clear
+            </button>
+          )}
         </div>
       </div>
 

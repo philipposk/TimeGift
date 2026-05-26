@@ -7,6 +7,7 @@ import { getCurrentUser } from '@/utils/auth';
 import { Icon } from '@/components/tg/icon';
 import { Brand } from '@/components/tg/brand';
 import { LetterView } from '@/components/tg/letter-view';
+import { Turnstile } from '@/components/tg/turnstile';
 
 interface ClaimData {
   gift: {
@@ -34,6 +35,8 @@ export default function ClaimPage() {
   const [stage, setStage] = useState<Stage>('closed');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState('');
+  const turnstileRequired = !!process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
 
   useEffect(() => {
     if (!token) return;
@@ -64,7 +67,11 @@ export default function ClaimPage() {
       return;
     }
     try {
-      const res = await fetch(`/api/gifts/claim/${token}`, { method: 'POST' });
+      const res = await fetch(`/api/gifts/claim/${token}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ turnstileToken }),
+      });
       const json = await res.json();
       if (!res.ok) {
         setError(json.error || 'Claim failed.');
@@ -159,8 +166,20 @@ export default function ClaimPage() {
                 : `Status: ${g.status}`}
             </p>
             {g.status === 'pending' && (
+              <div
+                className="row"
+                style={{ justifyContent: 'center', marginBottom: 16 }}
+              >
+                <Turnstile onToken={setTurnstileToken} action="claim" />
+              </div>
+            )}
+            {g.status === 'pending' && (
               <div className="row gap-3" style={{ justifyContent: 'center' }}>
-                <button className="btn btn-accent btn-lg" onClick={attemptClaim} disabled={busy}>
+                <button
+                  className="btn btn-accent btn-lg"
+                  onClick={attemptClaim}
+                  disabled={busy || (turnstileRequired && !turnstileToken)}
+                >
                   <Icon name="check" size={15} /> {busy ? 'Working…' : 'Claim this gift'}
                 </button>
                 <Link href="/" className="btn btn-ghost btn-lg">

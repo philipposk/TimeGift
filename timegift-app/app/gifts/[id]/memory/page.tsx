@@ -58,16 +58,17 @@ export default function AddMemoryPage() {
         const { data: pub } = supabase.storage.from('memories').getPublicUrl(path);
         photoUrl = pub.publicUrl;
       }
-      const { error: updateErr } = await supabase
-        .from('gifts')
-        .update({
-          memory_photo_url: photoUrl || null,
-          memory_story: story.trim() || null,
-          memory_location: location.trim() || null,
-          memory_created_at: new Date().toISOString(),
-        })
-        .eq('id', giftId);
-      if (updateErr) throw updateErr;
+      const res = await fetch(`/api/gifts/${giftId}/memory`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          photoUrl: photoUrl || null,
+          story: story.trim() || null,
+          location: location.trim() || null,
+        }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error || 'Save failed.');
       router.push(`/gifts/${giftId}`);
     } catch (e: any) {
       setError(e.message || 'Save failed.');

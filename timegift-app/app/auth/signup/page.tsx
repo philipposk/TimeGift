@@ -3,9 +3,10 @@
 import { useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { signUp, signInWithGoogle, signInWithFacebook } from '@/utils/auth';
+import { signIn, signInWithGoogle, signInWithFacebook } from '@/utils/auth';
 import { TopNav } from '@/components/tg/nav';
 import { Icon } from '@/components/tg/icon';
+import { Turnstile } from '@/components/tg/turnstile';
 
 function SignUpForm() {
   const router = useRouter();
@@ -15,20 +16,62 @@ function SignUpForm() {
   const [username, setUsername] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [password, setPassword] = useState('');
+  const [turnstileToken, setTurnstileToken] = useState('');
+  const [needsConfirm, setNeedsConfirm] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const turnstileRequired = !!process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
     setError(null);
     try {
-      await signUp(email.trim(), password, username.trim(), displayName.trim() || undefined);
+      const res = await fetch('/api/auth/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: email.trim(),
+          password,
+          username: username.trim(),
+          displayName: displayName.trim() || undefined,
+          turnstileToken: turnstileToken || undefined,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        setError(json.error || 'Sign-up failed.');
+        setBusy(false);
+        return;
+      }
+      if (json.requireConfirmation) {
+        setNeedsConfirm(true);
+        setBusy(false);
+        return;
+      }
+      // Auto-confirmed: sign in immediately to get the cookie session.
+      await signIn(email.trim(), password);
       router.push(next);
     } catch (e: any) {
       setError(e?.message || 'Sign-up failed.');
       setBusy(false);
     }
+  }
+
+  if (needsConfirm) {
+    return (
+      <div className="stack gap-4 center">
+        <div className="serif" style={{ fontSize: 22 }}>Check your email.</div>
+        <div className="meta">
+          We sent a confirmation link to <strong>{email}</strong>. Open it to finish signing up, then come
+          back here.
+        </div>
+        <Link href={`/auth/signin?next=${encodeURIComponent(next)}`} className="btn mt-4">
+          Sign in
+        </Link>
+      </div>
+    );
   }
 
   return (
@@ -55,7 +98,7 @@ function SignUpForm() {
           minLength={2}
           maxLength={24}
         />
-        <span className="meta">a–z, 0–9 and _, 2–24 chars</span>
+        <span className="meta">a-z, 0-9 and _, 2-24 chars</span>
       </div>
       <div className="field">
         <label className="field-label">Display name (optional)</label>
@@ -78,6 +121,8 @@ function SignUpForm() {
         <span className="meta">at least 8 characters</span>
       </div>
 
+      <Turnstile onToken={setTurnstileToken} action="signup" />
+
       {error && (
         <div
           style={{
@@ -93,8 +138,13 @@ function SignUpForm() {
         </div>
       )}
 
-      <button type="submit" className="btn btn-lg" disabled={busy} style={{ width: '100%', justifyContent: 'center' }}>
-        {busy ? 'Creating account…' : 'Create account'}
+      <button
+        type="submit"
+        className="btn btn-lg"
+        disabled={busy || (turnstileRequired && !turnstileToken)}
+        style={{ width: '100%', justifyContent: 'center' }}
+      >
+        {busy ? 'Creating account...' : 'Create account'}
       </button>
 
       <div className="row gap-3" style={{ marginTop: 4 }}>
@@ -146,7 +196,7 @@ export default function SignUpPage() {
             <h1 className="serif mb-6" style={{ fontSize: 32, letterSpacing: '-0.01em' }}>
               Create your account
             </h1>
-            <Suspense fallback={<div className="muted">Loading…</div>}>
+            <Suspense fallback={<div className="muted">Loading...</div>}>
               <SignUpForm />
             </Suspense>
           </div>
