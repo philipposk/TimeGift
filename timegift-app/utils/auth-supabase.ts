@@ -35,7 +35,7 @@ export async function signIn(emailOrUsername: string, password: string): Promise
   if (error) throw error;
   if (!data.user) throw new Error('Sign in failed');
 
-  const profile = await getUserProfile(data.user.id);
+  const profile = await ensureProfile(data.user.id, data.user.email ?? email);
   if (!profile) throw new Error('User profile not found');
   return profile;
 }
@@ -90,6 +90,22 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
   return getUserProfile(user.id);
+}
+
+async function ensureProfile(userId: string, email?: string | null): Promise<AuthUser | null> {
+  const existing = await getUserProfile(userId);
+  if (existing) return existing;
+  const base = (email?.split('@')[0] || 'user').toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 20) || 'user';
+  const username = `${base}_${userId.replace(/-/g, '').slice(0, 6)}`;
+  const { error } = await supabase.from('users').insert({
+    id: userId,
+    email: email ?? null,
+    username,
+    display_name: base,
+    privacy_level: 'friends',
+  });
+  if (error) throw error;
+  return getUserProfile(userId);
 }
 
 async function getUserProfile(userId: string): Promise<AuthUser | null> {

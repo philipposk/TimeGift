@@ -72,7 +72,7 @@ export default function LandingPage() {
                 style={{ fontSize: 28, lineHeight: 1.35, color: 'var(--ink-soft)', maxWidth: 720 }}
               >
                 We&apos;ve made gifts about <em>things.</em> Boxes, wrap, the right shade of something.
-                But the people who love you mostly want one thing —{' '}
+                But the people who love you mostly want one thing:{' '}
                 <span style={{ color: 'var(--ink)' }}>a piece of the week you didn&apos;t give to anyone else.</span>{' '}
                 Timegift is a way to actually send that.
               </div>
@@ -198,9 +198,9 @@ function ExampleLetter() {
       <hr className="hr mt-6 mb-6" />
       <p className="handwritten" style={{ marginBottom: 14 }}>
         I&apos;ve been meaning to say this for months. You&apos;re the reason I picked up writing again. Three
-        hours — coffee, a long walk, or just sitting on the porch. Pick the day.
+        hours. Coffee, a long walk, or just sitting on the porch. Pick the day.
       </p>
-      <p className="handwritten" style={{ textAlign: 'right' }}>— M.</p>
+      <p className="handwritten" style={{ textAlign: 'right' }}>M.</p>
       <hr className="hr mt-6 mb-4" />
       <div className="row between meta">
         <span>Sent May 19</span>

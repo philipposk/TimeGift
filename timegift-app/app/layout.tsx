@@ -24,7 +24,7 @@ const mono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Timegift — Give someone your time",
+  title: "Timegift. Give someone your time",
   description:
     "Not a thing you bought. A morning. A long walk. The whole of next Sunday. Write it down, send it across, and mean it.",
   keywords: ["time gift", "personal gift", "scheduling", "quality time", "letters", "memories"],
@@ -40,14 +40,14 @@ export const metadata: Metadata = {
     apple: "/icon",
   },
   openGraph: {
-    title: "Timegift — Give someone your time",
+    title: "Timegift. Give someone your time",
     description: "A small, deliberate way to send a morning, a long walk, the whole of next Sunday.",
     type: "website",
     siteName: "Timegift",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Timegift — Give someone your time",
+    title: "Timegift. Give someone your time",
     description: "A small, deliberate way to send a morning, a long walk, the whole of next Sunday.",
   },
 };

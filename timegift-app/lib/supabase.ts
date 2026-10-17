@@ -1,5 +1,6 @@
 import { createBrowserClient } from '@supabase/ssr';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { sharedCookieOptions } from './supabase/cookies';
 
 // Browser client (use in client components). Persists session in cookies via
 // @supabase/ssr so that server route handlers can read auth.
@@ -9,7 +10,10 @@ export function getSupabaseBrowserClient(): SupabaseClient {
   if (!browserClient) {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
     const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-    browserClient = createBrowserClient(url, key) as unknown as SupabaseClient;
+    browserClient = createBrowserClient(url, key, {
+      cookieOptions: sharedCookieOptions,
+      db: { schema: 'timegift' },
+    }) as unknown as SupabaseClient;
   }
   return browserClient;
 }
@@ -27,6 +31,7 @@ export function getSupabaseServiceClient(): SupabaseClient {
     }
     serviceClient = createClient(url, key, {
       auth: { persistSession: false, autoRefreshToken: false },
+      db: { schema: 'timegift' },
     });
   }
   return serviceClient;
