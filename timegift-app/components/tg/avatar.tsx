@@ -1,4 +1,4 @@
-import Avatar from 'boring-avatars';
+import BoringAvatar from 'boring-avatars';
 
 interface AvatarProps {
   name?: string | null;
@@ -29,7 +29,7 @@ export function Avatar({ name, size = 'md', url }: AvatarProps) {
   const seed = (name || '?').trim();
   return (
     <div className={cls} style={{ padding: 0, overflow: 'hidden', background: 'transparent' }}>
-      <Avatar size={px} name={seed} variant="marble" colors={PALETTE} />
+      <BoringAvatar size={px} name={seed} variant="marble" colors={PALETTE} />
     </div>
   );
 }

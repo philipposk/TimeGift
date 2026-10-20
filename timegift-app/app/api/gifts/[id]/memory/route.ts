@@ -1,7 +1,7 @@
 import { NextResponse, NextRequest } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
 import { getSupabaseServiceClient } from '@/lib/supabase';
-import { checkContent } from '@/lib/moderation';
+import { moderateText as checkContent } from '@/lib/moderation';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';

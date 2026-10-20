@@ -32,7 +32,7 @@ export function getSupabaseServiceClient(): SupabaseClient {
     serviceClient = createClient(url, key, {
       auth: { persistSession: false, autoRefreshToken: false },
       db: { schema: 'timegift' },
-    });
+    }) as unknown as SupabaseClient;
   }
   return serviceClient;
 }
