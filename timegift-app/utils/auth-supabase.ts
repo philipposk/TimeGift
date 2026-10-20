@@ -1,6 +1,7 @@
 'use client';
 
 import { getSupabaseBrowserClient } from '@/lib/supabase';
+import { trackAppAccessClient } from './app-access-client';
 
 const supabase = getSupabaseBrowserClient();
 
@@ -35,6 +36,7 @@ export async function signIn(emailOrUsername: string, password: string): Promise
   if (error) throw error;
   if (!data.user) throw new Error('Sign in failed');
 
+  void trackAppAccessClient(supabase, data.user, 'timegift');
   const profile = await ensureProfile(data.user.id, data.user.email ?? email);
   if (!profile) throw new Error('User profile not found');
   return profile;
@@ -49,6 +51,7 @@ export async function signUp(
   const { data: authData, error: authError } = await supabase.auth.signUp({ email, password });
   if (authError) throw authError;
   if (!authData.user) throw new Error('Sign up failed');
+  if (authData.session) void trackAppAccessClient(supabase, authData.user, 'timegift');
 
   const { error: profileError } = await supabase.from('users').insert({
     id: authData.user.id,

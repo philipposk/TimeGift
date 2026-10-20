@@ -24,6 +24,13 @@ export async function GET(request: Request) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.redirect(`${origin}${next}`);
 
+  // Shared 6x7 signup-source tracking (public.app_access, RLS own rows). Never blocks login.
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (supabase as any).schema('public').from('app_access')
+      .upsert({ user_id: user.id, app: 'timegift', last_seen: new Date().toISOString() }, { onConflict: 'user_id,app' });
+  } catch { /* ignore */ }
+
   // Existing profile? Done.
   const { data: existingProfile } = await supabase
     .from('users')
