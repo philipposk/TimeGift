@@ -1,7 +1,6 @@
 // AI utilities for OpenAI and Groq.
 
 import OpenAI from 'openai';
-// @ts-expect-error - groq-sdk types may not be available
 import Groq from 'groq-sdk';
 
 export const openai = process.env.OPENAI_API_KEY
