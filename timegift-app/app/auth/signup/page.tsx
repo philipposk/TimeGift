@@ -7,6 +7,8 @@ import { signIn, signInWithGoogle, signInWithFacebook } from '@/utils/auth';
 import { TopNav } from '@/components/tg/nav';
 import { Icon } from '@/components/tg/icon';
 import { Turnstile } from '@/components/tg/turnstile';
+import { GoogleIdentityButton } from "@/components/GoogleIdentityButton";
+import { getSupabaseBrowserClient } from "@/lib/supabase";
 
 function SignUpForm() {
   const router = useRouter();
@@ -154,14 +156,16 @@ function SignUpForm() {
       </div>
 
       <div className="stack gap-3">
-        <button
-          type="button"
-          onClick={() => signInWithGoogle().catch((e) => setError(e.message))}
-          className="btn btn-ghost"
-          style={{ justifyContent: 'center' }}
-        >
-          <Icon name="globe" size={14} /> Continue with Google
-        </button>
+        <GoogleIdentityButton getSupabase={getSupabaseBrowserClient} onSignedIn={() => router.push(next)} onError={setError}>
+          <button
+            type="button"
+            onClick={() => signInWithGoogle().catch((e) => setError(e.message))}
+            className="btn btn-ghost"
+            style={{ justifyContent: 'center' }}
+          >
+            <Icon name="globe" size={14} /> Continue with Google
+          </button>
+        </GoogleIdentityButton>
         <button
           type="button"
           onClick={() => signInWithFacebook().catch((e) => setError(e.message))}
