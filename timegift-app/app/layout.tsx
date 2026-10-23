@@ -3,6 +3,7 @@ import { Instrument_Serif, Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ServiceWorkerRegister } from "@/components/tg/sw-register";
 import { PushPrompt } from "@/components/tg/push-prompt";
+import { SiteJsonLd } from "@/components/SiteJsonLd";
 
 const serif = Instrument_Serif({
   subsets: ["latin"],
@@ -24,6 +25,9 @@ const mono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://timegift.6x7.gr"),
+  alternates: { canonical: "./" },
+  robots: { index: true, follow: true },
   title: "Timegift. Give someone your time",
   description:
     "Not a thing you bought. A morning. A long walk. The whole of next Sunday. Write it down, send it across, and mean it.",
@@ -66,6 +70,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${serif.variable} ${sans.variable} ${mono.variable}`}>
+        <SiteJsonLd />
         <div id="app" style={{ position: "relative", zIndex: 1, minHeight: "100vh" }}>
           {children}
         </div>
