@@ -1,6 +1,6 @@
 import type { MetadataRoute } from 'next';
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://timegift.fly.dev';
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://timegift.6x7.gr';
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const now = new Date();
