@@ -218,7 +218,7 @@ export default function GiftDetailPage() {
                 padding: 16,
                 border: '1px solid var(--rose-soft)',
                 background: 'var(--rose-soft)',
-                color: '#5b2228',
+                color: 'var(--err-ink)',
                 borderRadius: 6,
               }}
             >
@@ -326,7 +326,7 @@ export default function GiftDetailPage() {
                 maxWidth: 620,
                 margin: '40px auto 0',
                 padding: 24,
-                background: '#fbf7ee',
+                background: 'var(--card)',
                 border: '1px solid var(--hairline)',
                 borderRadius: 6,
               }}

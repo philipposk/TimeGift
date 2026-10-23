@@ -38,7 +38,7 @@ export function TopNav() {
     <div
       style={{
         borderBottom: '1px solid var(--hairline-soft)',
-        background: 'rgba(244, 239, 230, 0.85)',
+        background: 'var(--nav-bg)',
         position: 'sticky',
         top: 0,
         zIndex: 40,
@@ -77,7 +77,7 @@ export function TopNav() {
                       top: 'calc(100% + 14px)',
                       right: 0,
                       width: 200,
-                      background: '#fbf7ee',
+                      background: 'var(--card)',
                       border: '1px solid var(--hairline)',
                       borderRadius: 6,
                       boxShadow: '0 12px 32px -16px rgba(60,40,20,0.3)',
@@ -112,6 +112,13 @@ export function TopNav() {
                     >
                       Analytics
                     </Link>
+                    <Link
+                      href="/settings"
+                      onClick={() => setMenuOpen(false)}
+                      style={{ display: 'block', padding: '12px 16px', borderBottom: '1px solid var(--hairline-soft)' }}
+                    >
+                      Settings
+                    </Link>
                     {user.isAdmin && (
                       <Link
                         href="/admin"
@@ -143,6 +150,7 @@ export function TopNav() {
             </>
           ) : (
             <>
+              <Link href="/settings" className="nav-link">Settings</Link>
               <Link href="/auth/signin" className="nav-link">Sign in</Link>
               <Link href="/auth/signup" className="btn" style={{ padding: '8px 14px', fontSize: 13 }}>
                 Create account

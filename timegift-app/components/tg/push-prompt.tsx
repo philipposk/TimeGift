@@ -73,7 +73,7 @@ export function PushPrompt() {
         bottom: 20,
         right: 20,
         maxWidth: 340,
-        background: '#fbf7ee',
+        background: 'var(--card)',
         border: '1px solid var(--hairline)',
         borderRadius: 6,
         padding: 16,

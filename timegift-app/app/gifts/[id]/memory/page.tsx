@@ -130,7 +130,7 @@ export default function AddMemoryPage() {
                     border: '1px dashed var(--hairline)',
                     borderRadius: 6,
                     cursor: 'pointer',
-                    background: '#fbf7ee',
+                    background: 'var(--card)',
                   }}
                 >
                   <Icon name="camera" size={28} className="muted" />
@@ -167,7 +167,7 @@ export default function AddMemoryPage() {
                   padding: 16,
                   border: '1px solid var(--rose-soft)',
                   background: 'var(--rose-soft)',
-                  color: '#5b2228',
+                  color: 'var(--err-ink)',
                   borderRadius: 6,
                 }}
               >

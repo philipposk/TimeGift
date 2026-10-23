@@ -110,7 +110,7 @@ export default function AdminPage() {
                 padding: 12,
                 border: '1px solid ' + (err ? 'var(--rose-soft)' : 'var(--moss-soft)'),
                 background: err ? 'var(--rose-soft)' : 'var(--moss-soft)',
-                color: err ? '#5b2228' : '#2d4a25',
+                color: err ? 'var(--err-ink)' : 'var(--ok-ink)',
                 borderRadius: 6,
                 marginBottom: 16,
                 fontSize: 14,

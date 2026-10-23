@@ -131,7 +131,7 @@ function SignUpForm() {
             padding: 12,
             border: '1px solid var(--rose-soft)',
             background: 'var(--rose-soft)',
-            color: '#5b2228',
+            color: 'var(--err-ink)',
             borderRadius: 6,
             fontSize: 14,
           }}

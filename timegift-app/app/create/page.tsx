@@ -192,7 +192,7 @@ export default function CreatePage() {
                     padding: 16,
                     border: '1px solid var(--rose-soft)',
                     background: 'var(--rose-soft)',
-                    color: '#5b2228',
+                    color: 'var(--err-ink)',
                     borderRadius: 6,
                   }}
                 >
@@ -310,7 +310,7 @@ function StepTime({ data, update }: { data: Draft; update: (p: Partial<Draft>) =
                 key={qp.label}
                 onClick={() => update({ amount: qp.a, unit: qp.u })}
                 style={{
-                  background: active ? 'var(--ink)' : '#fbf7ee',
+                  background: active ? 'var(--ink)' : 'var(--card)',
                   color: active ? 'var(--paper)' : 'var(--ink)',
                   border: '1px solid ' + (active ? 'var(--ink)' : 'var(--hairline)'),
                   borderRadius: 6,
