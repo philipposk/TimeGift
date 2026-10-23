@@ -3,7 +3,7 @@ import { Instrument_Serif, Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ServiceWorkerRegister } from "@/components/tg/sw-register";
 import { PushPrompt } from "@/components/tg/push-prompt";
-import { SiteJsonLd } from "@/components/SiteJsonLd";
+import { SITE_DESCRIPTION, SiteJsonLd } from "@/components/SiteJsonLd";
 import { themeInitScript } from "@/lib/theme";
 
 const serif = Instrument_Serif({
@@ -30,8 +30,7 @@ export const metadata: Metadata = {
   alternates: { canonical: "./" },
   robots: { index: true, follow: true },
   title: "Timegift. Give someone your time",
-  description:
-    "Not a thing you bought. A morning. A long walk. The whole of next Sunday. Write it down, send it across, and mean it.",
+  description: SITE_DESCRIPTION,
   keywords: ["time gift", "personal gift", "scheduling", "quality time", "letters", "memories"],
   manifest: "/manifest.json",
   appleWebApp: {
@@ -46,14 +45,14 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: "Timegift. Give someone your time",
-    description: "A small, deliberate way to send a morning, a long walk, the whole of next Sunday.",
+    description: SITE_DESCRIPTION,
     type: "website",
     siteName: "Timegift",
   },
   twitter: {
     card: "summary_large_image",
     title: "Timegift. Give someone your time",
-    description: "A small, deliberate way to send a morning, a long walk, the whole of next Sunday.",
+    description: SITE_DESCRIPTION,
   },
 };
 
