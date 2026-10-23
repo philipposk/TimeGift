@@ -4,6 +4,7 @@ import "./globals.css";
 import { ServiceWorkerRegister } from "@/components/tg/sw-register";
 import { PushPrompt } from "@/components/tg/push-prompt";
 import { SiteJsonLd } from "@/components/SiteJsonLd";
+import { themeInitScript } from "@/lib/theme";
 
 const serif = Instrument_Serif({
   subsets: ["latin"],
@@ -68,7 +69,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+      </head>
       <body className={`${serif.variable} ${sans.variable} ${mono.variable}`}>
         <SiteJsonLd />
         <div id="app" style={{ position: "relative", zIndex: 1, minHeight: "100vh" }}>

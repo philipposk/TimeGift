@@ -167,7 +167,7 @@ export default function GroupGiftCreatePage() {
             </div>
 
             {error && (
-              <div style={{ padding: 12, border: '1px solid var(--rose-soft)', background: 'var(--rose-soft)', color: '#5b2228', borderRadius: 6 }}>
+              <div style={{ padding: 12, border: '1px solid var(--rose-soft)', background: 'var(--rose-soft)', color: 'var(--err-ink)', borderRadius: 6 }}>
                 {error}
               </div>
             )}

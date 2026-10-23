@@ -149,7 +149,7 @@ export default function ClaimPage() {
                 padding: 16,
                 border: '1px solid var(--rose-soft)',
                 background: 'var(--rose-soft)',
-                color: '#5b2228',
+                color: 'var(--err-ink)',
                 borderRadius: 6,
                 maxWidth: 620,
                 margin: '24px auto 0',
@@ -244,7 +244,7 @@ function ClosedEnvelope({
           maxWidth: 520,
           margin: '0 auto',
           aspectRatio: '1.7 / 1',
-          background: '#fbf7ee',
+          background: 'var(--card)',
           border: '1px solid var(--hairline)',
           borderRadius: 4,
           position: 'relative',
@@ -272,7 +272,7 @@ function ClosedEnvelope({
           <div className="eyebrow" style={{ marginBottom: 6 }}>To you, from</div>
           <div className="serif" style={{ fontSize: 24 }}>{senderName}</div>
         </div>
-        <div className="stamp" style={{ position: 'absolute', top: 18, right: 18, background: '#fbf7ee' }}>
+        <div className="stamp" style={{ position: 'absolute', top: 18, right: 18, background: 'var(--card)' }}>
           <div>
             <div style={{ fontSize: 9, letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: 2 }}>
               Timegift

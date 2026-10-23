@@ -117,7 +117,7 @@ export function VoiceRecorder({ onRecorded, maxSeconds = 90 }: Props) {
           <Icon name="phone" size={12} /> Record a voice memo (up to {maxSeconds}s)
         </button>
       )}
-      {error && <div className="meta" style={{ color: '#5b2228' }}>{error}</div>}
+      {error && <div className="meta" style={{ color: 'var(--err-ink)' }}>{error}</div>}
       <style jsx>{`
         @keyframes tg-pulse {
           0%, 100% { opacity: 1; transform: scale(1); }
