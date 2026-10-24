@@ -5,7 +5,7 @@ import * as React from 'react';
 
 const resendKey = process.env.RESEND_API_KEY;
 const fromAddress = process.env.RESEND_FROM_EMAIL || 'Timegift <hello@timegift.dev>';
-const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://timegift.fly.dev';
+const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://timegift.6x7.gr';
 
 const resend = resendKey ? new Resend(resendKey) : null;
 

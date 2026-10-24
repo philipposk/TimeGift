@@ -86,7 +86,7 @@ export default function OG() {
           }}
         >
           <div>A morning. A long walk. The whole of next Sunday.</div>
-          <div style={{ fontStyle: 'italic' }}>timegift.fly.dev</div>
+          <div style={{ fontStyle: 'italic' }}>timegift.6x7.gr</div>
         </div>
       </div>
     ),
