@@ -1,6 +1,6 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
-import { sharedCookieOptions } from './lib/supabase/cookies';
+import { sharedCookieOptions, cookieOptionsForHost, hostFromHeaders } from './lib/supabase/cookies';
 import { trackAppAccess } from './lib/app-access';
 
 // Refreshes the shared 6x7 session (cookie sb-6x7-auth on .6x7.gr) on every page
@@ -17,7 +17,7 @@ export async function middleware(request: NextRequest) {
   if (!hasSession) return response;
 
   const supabase = createServerClient(url, key, {
-    cookieOptions: sharedCookieOptions,
+    cookieOptions: cookieOptionsForHost(hostFromHeaders(request.headers)),
     cookies: {
       getAll() {
         return request.cookies.getAll();

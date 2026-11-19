@@ -1,6 +1,6 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
-import { cookies } from 'next/headers';
-import { sharedCookieOptions } from './supabase/cookies';
+import { cookies, headers } from 'next/headers';
+import { cookieOptionsForHost, hostFromHeaders } from './supabase/cookies';
 
 function cookieAdapter(cookieStore: Awaited<ReturnType<typeof cookies>>) {
   return {
@@ -34,7 +34,7 @@ export async function createSupabaseServerClient() {
   }
 
   return createServerClient(url, key, {
-    cookieOptions: sharedCookieOptions,
+    cookieOptions: cookieOptionsForHost(hostFromHeaders(await headers())),
     db: { schema: 'timegift' },
     cookies: cookieAdapter(cookieStore),
   });
