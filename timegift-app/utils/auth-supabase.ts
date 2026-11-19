@@ -76,7 +76,7 @@ export async function signOut(): Promise<void> {
 export async function signInWithGoogle(): Promise<void> {
   const { error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
-    options: { redirectTo: `${process.env.NEXT_PUBLIC_APP_URL || window.location.origin}/auth/callback` },
+    options: { redirectTo: `${window.location.origin}/auth/callback` },
   });
   if (error) throw error;
 }
@@ -84,7 +84,7 @@ export async function signInWithGoogle(): Promise<void> {
 export async function signInWithFacebook(): Promise<void> {
   const { error } = await supabase.auth.signInWithOAuth({
     provider: 'facebook',
-    options: { redirectTo: `${process.env.NEXT_PUBLIC_APP_URL || window.location.origin}/auth/callback` },
+    options: { redirectTo: `${window.location.origin}/auth/callback` },
   });
   if (error) throw error;
 }
